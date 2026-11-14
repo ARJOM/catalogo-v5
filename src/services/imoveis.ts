@@ -112,6 +112,35 @@ export async function updateImovel(id: string, dados: DadosImovel, autor: Autor)
   return paraImovel(await getDoc(referencia))!
 }
 
+/**
+ * Exclusão lógica: `status = 'inativo'` e `deletadoEm = serverTimestamp()`. A troca de status
+ * entra no histórico como qualquer edição. Devolve o imóvel atualizado.
+ */
+export async function softDeleteImovel(id: string, autor: Autor): Promise<Imovel> {
+  const referencia = doc(db, 'imoveis', id)
+  await runTransaction(db, async (transacao) => {
+    const atual = await transacao.get(referencia)
+    if (!atual.exists()) throw new Error('Imóvel não encontrado.')
+    const statusAnterior = atual.data().status as StatusImovel
+    transacao.update(referencia, {
+      status: 'inativo',
+      deletadoEm: serverTimestamp(),
+      atualizadoEm: serverTimestamp(),
+      atualizadoPor: autor.uid,
+    })
+    if (statusAnterior !== 'inativo') {
+      transacao.set(doc(historicoDe(id)), {
+        tipo: 'edicao',
+        campo: 'status',
+        valorAnterior: statusAnterior,
+        valorNovo: 'inativo',
+        ...autoria(autor),
+      })
+    }
+  })
+  return paraImovel(await getDoc(referencia))!
+}
+
 export interface AlteracaoDeFotos {
   /** URLs de download das fotos recém-enviadas, a acrescentar ao fim de `fotos[]`. */
   adicionadas: string[]

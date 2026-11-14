@@ -5,6 +5,7 @@ import {
   createImovel,
   getImovel,
   listImoveis,
+  softDeleteImovel,
   updateImovel,
 } from '@/services/imoveis'
 import { deleteFoto, uploadFoto } from '@/services/storage'
@@ -208,6 +209,18 @@ export const useImoveisStore = defineStore('imoveis', () => {
     return { imovel, enviadas, falhas, naoApagadas, erroNasFotos: null }
   }
 
+  /**
+   * Inativa o imóvel (exclusão lógica). No escopo "ativos" ele sai da lista; no do admin
+   * continua nela, como inativo.
+   */
+  async function inativar(id: string): Promise<Imovel> {
+    const usuario = auth.usuario
+    if (!usuario) throw new Error('Sessão encerrada.')
+    const imovel = await softDeleteImovel(id, { uid: usuario.uid, nome: usuario.nome })
+    registrar(imovel)
+    return imovel
+  }
+
   /** Remove da lista em memória (exclusão real, E5). */
   function remover(id: string) {
     itens.value = itens.value.filter((imovel) => imovel.id !== id)
@@ -250,6 +263,7 @@ export const useImoveisStore = defineStore('imoveis', () => {
     obter,
     registrar,
     salvar,
+    inativar,
     remover,
     limparFiltros,
     limpar,

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BaseBadge from '@/components/BaseBadge.vue'
 import BaseButton from '@/components/BaseButton.vue'
+import BaseModal from '@/components/BaseModal.vue'
 import FotoCarrossel from '@/components/FotoCarrossel.vue'
 import HistoricoList from '@/components/HistoricoList.vue'
 import LeadsDoImovel from '@/components/LeadsDoImovel.vue'
@@ -65,6 +66,31 @@ const titulo = computed(() =>
 )
 const telefone = computed(() => formatarTelefone(imovel.value?.vendedorTelefone))
 
+const confirmandoInativacao = ref(false)
+const inativando = ref(false)
+const erroInativacao = ref('')
+
+function pedirInativacao() {
+  erroInativacao.value = ''
+  confirmandoInativacao.value = true
+}
+
+async function inativar() {
+  if (!imovel.value) return
+  inativando.value = true
+  erroInativacao.value = ''
+  try {
+    await imoveis.inativar(imovel.value.id)
+    confirmandoInativacao.value = false
+    // Sai do catálogo do corretor: volta para a lista.
+    await router.replace({ name: 'catalogo' })
+  } catch {
+    erroInativacao.value = 'Não foi possível inativar o imóvel. Tente novamente.'
+  } finally {
+    inativando.value = false
+  }
+}
+
 /** Volta ao catálogo; os filtros moram na store, então chegam intactos. */
 function voltar() {
   if (window.history.state?.back) router.back()
@@ -84,6 +110,16 @@ function voltar() {
       >
         {{ ativo ? 'Ativo' : 'Inativo' }}
       </BaseBadge>
+      <BaseButton
+        v-if="ativo"
+        tamanho="sm"
+        variante="danger"
+        icone="circle-x"
+        aria-label="Inativar imóvel"
+        @click="pedirInativacao"
+      >
+        <span class="hide-on-mobile">Inativar</span>
+      </BaseButton>
       <RouterLink :to="{ name: 'imovel-editar', params: { id: imovel.id } }" class="btn sm">
         <i class="ti ti-edit" aria-hidden="true"></i>
         <span class="hide-on-mobile">Editar</span>
@@ -177,5 +213,30 @@ function voltar() {
     </div>
   </div>
 
+  <BaseModal v-model:aberto="confirmandoInativacao" titulo="Inativar imóvel?">
+    <p>
+      <strong>{{ titulo }}</strong> deixa de aparecer no catálogo dos corretores. O histórico e as
+      fotos são mantidos, e é possível reativá-lo depois, editando o status.
+    </p>
+    <p v-if="erroInativacao" class="lalert modal-erro" role="alert">
+      <i class="ti ti-alert-circle" aria-hidden="true"></i> {{ erroInativacao }}
+    </p>
+    <template #rodape>
+      <BaseButton :disabled="inativando" @click="confirmandoInativacao = false"
+        >Cancelar</BaseButton
+      >
+      <BaseButton variante="danger" icone="circle-x" :carregando="inativando" @click="inativar">
+        Inativar
+      </BaseButton>
+    </template>
+  </BaseModal>
+
   <HistoricoList v-if="imovel" :imovel-id="imovel.id" />
 </template>
+
+<style scoped>
+.modal-erro {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+</style>

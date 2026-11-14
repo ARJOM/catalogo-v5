@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 vi.mock('@/firebase', async () => (await import('./ambiente')).criarFirebaseDeTeste())
 
 import { auth, db } from '@/firebase'
-import { createImovel, getImovel, updateImovel } from '@/services/imoveis'
+import { createImovel, getImovel, softDeleteImovel, updateImovel } from '@/services/imoveis'
 import { useAuthStore } from '@/stores/auth'
 import { useImoveisStore } from '@/stores/imoveis'
 import type { Autor, DadosImovel, Usuario } from '@/types'
@@ -148,5 +148,38 @@ describe('registros de criação e de fotos', () => {
     const store = useImoveisStore()
     const r = await store.salvar(dados(joao.uid))
     expect(await tipos(r.imovel.id)).toEqual(['criacao'])
+  })
+})
+
+describe('exclusão lógica', () => {
+  it('inativa, grava deletadoEm e registra a troca de status; o corretor deixa de vê-lo na lista de ativos', async () => {
+    const criado = await createImovel(dados(joao.uid), joao)
+    const inativo = await softDeleteImovel(criado.id, joao)
+
+    expect(inativo.status).toBe('inativo')
+    expect(inativo.deletadoEm?.toMillis()).toBeGreaterThan(0)
+    const registros = await historico(criado.id)
+    const troca = registros.find((r) => r.tipo === 'edicao')
+    expect(troca).toMatchObject({ campo: 'status', valorAnterior: 'ativo', valorNovo: 'inativo' })
+
+    const { listImoveis } = await import('@/services/imoveis')
+    const ativos = await listImoveis({ status: 'ativo' })
+    expect(ativos.map((i) => i.id)).not.toContain(criado.id)
+    expect((await listImoveis()).map((i) => i.id)).toContain(criado.id)
+  })
+
+  it('inativar de novo não duplica o registro de status', async () => {
+    const criado = await createImovel(dados(joao.uid), joao)
+    await softDeleteImovel(criado.id, joao)
+    await softDeleteImovel(criado.id, joao)
+    expect((await historico(criado.id)).filter((r) => r.campo === 'status')).toHaveLength(1)
+  })
+
+  it('reativar pela edição limpa o deletadoEm', async () => {
+    const criado = await createImovel(dados(joao.uid), joao)
+    await softDeleteImovel(criado.id, joao)
+    const reativado = await updateImovel(criado.id, { ...dados(joao.uid), status: 'ativo' }, joao)
+    expect(reativado.status).toBe('ativo')
+    expect(reativado.deletadoEm ?? null).toBeNull()
   })
 })
