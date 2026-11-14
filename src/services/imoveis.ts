@@ -7,8 +7,8 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  setDoc,
   where,
+  writeBatch,
   type DocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
@@ -47,13 +47,22 @@ function limpar(dados: DadosImovel): DadosImovel {
   return { ...dados, quartos: dados.quartos ?? null }
 }
 
+/** Dados comuns a todo registro de histórico. */
+const autoria = (autor: Autor) => ({
+  usuarioId: autor.uid,
+  usuarioNome: autor.nome,
+  timestamp: serverTimestamp(),
+})
+
 /**
- * Cria o imóvel com `fotos: []` (as fotos entram depois, quando o documento já existe:
- * a regra do Storage exige isso). Devolve o documento como ficou no servidor.
+ * Cria o imóvel com `fotos: []` e o registro `criacao` do histórico, juntos num batch (as
+ * fotos entram depois, quando o documento já existe: a regra do Storage exige isso). Devolve
+ * o documento como ficou no servidor.
  */
 export async function createImovel(dados: DadosImovel, autor: Autor): Promise<Imovel> {
   const referencia = doc(collection(db, 'imoveis'))
-  await setDoc(referencia, {
+  const lote = writeBatch(db)
+  lote.set(referencia, {
     ...limpar(dados),
     fotos: [],
     criadoEm: serverTimestamp(),
@@ -61,6 +70,8 @@ export async function createImovel(dados: DadosImovel, autor: Autor): Promise<Im
     atualizadoEm: serverTimestamp(),
     atualizadoPor: autor.uid,
   })
+  lote.set(doc(historicoDe(referencia.id)), { tipo: 'criacao', ...autoria(autor) })
+  await lote.commit()
   return paraImovel(await getDoc(referencia))!
 }
 
@@ -94,9 +105,7 @@ export async function updateImovel(id: string, dados: DadosImovel, autor: Autor)
         campo,
         valorAnterior,
         valorNovo,
-        usuarioId: autor.uid,
-        usuarioNome: autor.nome,
-        timestamp: serverTimestamp(),
+        ...autoria(autor),
       })
     }
   })
@@ -125,13 +134,26 @@ export async function atualizarFotos(
     const atual = await transacao.get(referencia)
     if (!atual.exists()) throw new Error('Imóvel não encontrado.')
     const fotos = (atual.data().fotos as string[] | undefined) ?? []
-    const novas = fotos.filter((url) => !removidas.includes(url))
-    for (const url of adicionadas) if (!novas.includes(url)) novas.push(url)
+    // Só conta o que de fato muda: remover o que já não está lá, ou adicionar o que já está, não é evento.
+    const retiradas = removidas.filter((url) => fotos.includes(url))
+    const novas = fotos.filter((url) => !retiradas.includes(url))
+    const incluidas = adicionadas.filter(
+      (url, i) => !novas.includes(url) && adicionadas.indexOf(url) === i,
+    )
+    novas.push(...incluidas)
+    if (retiradas.length === 0 && incluidas.length === 0) return
     transacao.update(referencia, {
       fotos: novas,
       atualizadoEm: serverTimestamp(),
       atualizadoPor: autor.uid,
     })
+    const eventos = [
+      ...incluidas.map(() => 'foto_adicionada' as const),
+      ...retiradas.map(() => 'foto_removida' as const),
+    ]
+    for (const tipo of eventos) {
+      transacao.set(doc(historicoDe(id)), { tipo, ...autoria(autor) })
+    }
   })
   return paraImovel(await getDoc(referencia))!
 }
