@@ -29,8 +29,8 @@ export function criarRouter(history: RouterHistory = createWebHistory(import.met
       {
         path: '/imoveis/:id',
         name: 'imovel-detalhe',
-        component: emBreve,
-        meta: { titulo: 'Detalhe do imóvel', epic: 'E3', requiresAuth: true },
+        component: () => import('@/views/ImovelDetalheView.vue'),
+        meta: { titulo: 'Detalhe do imóvel', requiresAuth: true },
       },
       {
         path: '/imoveis/:id/editar',
