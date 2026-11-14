@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() { return request.auth != null; }
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isActive() { return isAuth() && me().ativo == true; }
+    function isAdmin() { return isActive() && me().perfil == 'admin'; }
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuth() && (request.auth.uid == userId || isActive());
+      allow create: if isAdmin()
+        && request.resource.data.uid == userId
+        && request.resource.data.perfil in ['admin', 'corretor'];
+      allow update: if
+        (isAdmin()
+          && (request.auth.uid != userId || !changed().hasAny(['perfil', 'ativo'])))
+        || (isActive()
+          && request.auth.uid == userId
+          && changed().hasOnly(['nome', 'atualizadoEm']));
+      allow delete: if false;
+    }
+
+    match /imoveis/{imovelId} {
+      allow read: if isActive();
+      allow create: if isActive()
+        && request.resource.data.criadoPor == request.auth.uid
+        && request.resource.data.status in ['ativo', 'inativo'];
+      allow update: if isActive()
+        && !changed().hasAny(['criadoEm', 'criadoPor'])
+        && request.resource.data.atualizadoPor == request.auth.uid
+        && request.resource.data.status in ['ativo', 'inativo'];
+      allow delete: if isAdmin();
+
+      match /historico/{registroId} {
+        allow read: if isActive();
+        allow create: if isActive()
+          && request.resource.data.usuarioId == request.auth.uid
+          && request.resource.data.timestamp == request.time;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /leads/{leadId} {
+      allow read: if isActive();
+      allow create: if isActive()
+        && request.resource.data.criadoPor == request.auth.uid;
+      allow update: if isActive()
+        && !changed().hasAny(['criadoEm', 'criadoPor'])
+        && request.resource.data.atualizadoPor == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}
