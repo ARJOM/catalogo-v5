@@ -1,8 +1,10 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   runTransaction,
@@ -12,6 +14,7 @@ import {
   type DocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
+import { deleteFotosDoImovel } from '@/services/storage'
 import { diffImovel } from '@/utils/diffImovel'
 import type { Autor, DadosImovel, Imovel, StatusImovel } from '@/types'
 
@@ -185,4 +188,31 @@ export async function atualizarFotos(
     }
   })
   return paraImovel(await getDoc(referencia))!
+}
+
+/** Documentos apagados por batch (o limite do Firestore é 500 operações). */
+const TAMANHO_DO_LOTE = 400
+
+/** Apaga todos os registros de `historico` do imóvel, em lotes. */
+async function apagarHistorico(id: string): Promise<void> {
+  for (;;) {
+    const pagina = await getDocs(query(historicoDe(id), limit(TAMANHO_DO_LOTE)))
+    if (pagina.empty) return
+    const lote = writeBatch(db)
+    for (const registro of pagina.docs) lote.delete(registro.ref)
+    await lote.commit()
+  }
+}
+
+/**
+ * Exclusão real, só para o admin (as regras negam aos demais). O Firestore não apaga
+ * subcoleções sozinho, então a cascata é explícita e nesta ordem: arquivos do Storage, registros
+ * de histórico, documento do imóvel. Se algo falhar no meio, rodar de novo termina o serviço
+ * (cada etapa tolera o que já foi apagado). Os leads são mantidos: guardam o endereço
+ * desnormalizado.
+ */
+export async function hardDeleteImovel(id: string): Promise<void> {
+  await deleteFotosDoImovel(id)
+  await apagarHistorico(id)
+  await deleteDoc(doc(db, 'imoveis', id))
 }

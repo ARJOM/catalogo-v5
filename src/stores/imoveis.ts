@@ -4,6 +4,7 @@ import {
   atualizarFotos,
   createImovel,
   getImovel,
+  hardDeleteImovel,
   listImoveis,
   softDeleteImovel,
   updateImovel,
@@ -221,6 +222,17 @@ export const useImoveisStore = defineStore('imoveis', () => {
     return imovel
   }
 
+  /**
+   * Exclusão real em cascata (Storage, histórico, documento). Só o admin: as regras do Storage
+   * deixam qualquer usuário ativo apagar fotos, então a barreira para não começar a cascata
+   * por um corretor tem de estar aqui.
+   */
+  async function excluirDefinitivamente(id: string): Promise<void> {
+    if (!auth.ehAdmin) throw new Error('Apenas administradores podem excluir imóveis.')
+    await hardDeleteImovel(id)
+    remover(id)
+  }
+
   /** Remove da lista em memória (exclusão real, E5). */
   function remover(id: string) {
     itens.value = itens.value.filter((imovel) => imovel.id !== id)
@@ -264,6 +276,7 @@ export const useImoveisStore = defineStore('imoveis', () => {
     registrar,
     salvar,
     inativar,
+    excluirDefinitivamente,
     remover,
     limparFiltros,
     limpar,
