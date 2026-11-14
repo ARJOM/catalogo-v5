@@ -1,8 +1,33 @@
 especificacoes_tecnicas_catalogo_v5.docx
 
+# Dependências e build
 node_modules/
 dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+.eslintcache
+*.timestamp-*-*.mjs
+
+# Ambiente (nunca versionar)
 .env
 .env.local
+*.local
+
+# Logs
+logs/
+*.log
 *-debug.log
+
+# Firebase
 .firebase/
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.sw?
+
+# Vitest
+__screenshots__/
