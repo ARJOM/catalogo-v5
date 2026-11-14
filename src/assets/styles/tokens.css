@@ -1,0 +1,43 @@
+/* Tokens de design extraídos de prototipo_responsivo_catalogo_v5.html. */
+:root {
+  --bg:        #F5F4F0;
+  --surface:   #FFFFFF;
+  --surface-2: #EEECE9;
+  --text:      #1A1A18;
+  --text-2:    #55554F;
+  --text-3:    #99998E;
+  --border:    rgba(26,26,24,.10);
+  --border-2:  rgba(26,26,24,.20);
+  --brand:     #1D9E75;
+  --brand-dk:  #0F6E56;
+  --brand-bg:  #E1F5EE;
+  --brand-900: #085041;
+  --blue-bg:   #E6F1FB;
+  --blue:      #185FA5;
+  --blue-dk:   #0C447C;
+  --red-bg:    #FCEBEB;
+  --red:       #A32D2D;
+  --amber-bg:  #FAEEDA;
+  --amber:     #854F0B;
+  --green-bg:  #EAF3DE;
+  --green:     #3B6D11;
+  --coral-bg:  #FAECE7;
+  --coral:     #993C1D;
+  --r:  8px;
+  --rl: 12px;
+  --rx: 16px;
+  --sh: 0 1px 3px rgba(0,0,0,.06);
+  --shm: 0 4px 16px rgba(0,0,0,.09);
+  --f: 'DM Sans Variable', 'DM Sans', sans-serif;
+  --topbar-h: 52px;
+  --bottomnav-h: 60px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1A1A18; --surface: #242422; --surface-2: #2E2E2B;
+    --text: #F0EFE8; --text-2: #AAAAAA; --text-3: #666660;
+    --border: rgba(255,255,255,.08); --border-2: rgba(255,255,255,.16);
+    --brand-bg: #04342C; --blue-bg: #042C53; --red-bg: #501313;
+    --amber-bg: #412402; --green-bg: #173404; --coral-bg: #4A1B0C;
+  }
+}

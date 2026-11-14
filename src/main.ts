@@ -1,4 +1,7 @@
-import './assets/main.css'
+import '@fontsource-variable/dm-sans/opsz.css'
+import '@tabler/icons-webfont/dist/tabler-icons.min.css'
+import './assets/styles/tokens.css'
+import './assets/styles/base.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
