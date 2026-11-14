@@ -16,7 +16,8 @@
     "format": "prettier --write --experimental-cli src/",
     "emulators": "firebase emulators:start",
     "seed": "node scripts/seed.ts",
-    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-catalogo-v5-rules \"vitest run --config vitest.rules.config.ts\""
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-catalogo-v5-rules \"vitest run --config vitest.rules.config.ts\"",
+    "test:integracao": "firebase emulators:exec --only auth,firestore,storage --project demo-catalogo-v5-int \"vitest run --config vitest.integracao.config.ts\""
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "5.3.0",

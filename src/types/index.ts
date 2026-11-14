@@ -39,6 +39,31 @@ export interface Imovel {
   deletadoEm?: Timestamp | null
 }
 
+/** Campos que o formulário de cadastro/edição controla (o resto é auditoria e fotos). */
+export type DadosImovel = Pick<
+  Imovel,
+  | 'tipo'
+  | 'finalidade'
+  | 'valor'
+  | 'areaM2'
+  | 'quartos'
+  | 'caracteristicas'
+  | 'rua'
+  | 'bairro'
+  | 'cidade'
+  | 'estado'
+  | 'captadorId'
+  | 'vendedorNome'
+  | 'vendedorTelefone'
+  | 'status'
+>
+
+/** Quem executa uma gravação; vira `criadoPor`/`atualizadoPor` e o nome no histórico. */
+export interface Autor {
+  uid: string
+  nome: string
+}
+
 export type TipoHistorico = 'criacao' | 'edicao' | 'foto_adicionada' | 'foto_removida'
 
 export interface HistoricoRegistro {

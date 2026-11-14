@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import type { Imovel, Usuario } from '@/types'
+import type { DadosImovel, Imovel, Usuario } from '@/types'
 
 // Nenhum teste toca o Firebase: os serviços são trocados por funções simuladas.
 const falso = vi.hoisted(() => ({
   listImoveis: vi.fn<(opcoes?: { status?: string }) => Promise<unknown[]>>(),
   getImovel: vi.fn<(id: string) => Promise<unknown>>(),
+  createImovel: vi.fn<(dados: unknown, autor: unknown) => Promise<unknown>>(),
+  updateImovel: vi.fn<(id: string, dados: unknown, autor: unknown) => Promise<unknown>>(),
 }))
 vi.mock('@/services/imoveis', () => ({
   listImoveis: falso.listImoveis,
   getImovel: falso.getImovel,
+  createImovel: falso.createImovel,
+  updateImovel: falso.updateImovel,
 }))
 vi.mock('@/services/auth', () => ({
   entrar: vi.fn<() => void>(),
@@ -45,6 +49,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
   falso.listImoveis.mockReset().mockResolvedValue([imovel('a'), imovel('b', { tipo: 'Terreno' })])
   falso.getImovel.mockReset()
+  falso.createImovel.mockReset()
+  falso.updateImovel.mockReset()
 })
 
 describe('carregar', () => {
@@ -161,5 +167,52 @@ describe('troca de usuário', () => {
     expect(store.itens).toEqual([])
     expect(store.carregado).toBe(false)
     expect(store.filtros.busca).toBe('')
+  })
+})
+
+describe('salvar', () => {
+  const dados = { tipo: 'Casa', valor: 1 } as unknown as DadosImovel
+
+  it('cria sem id, com o usuário logado como autor, e põe o imóvel na lista', async () => {
+    const auth = useAuthStore()
+    auth.usuario = { uid: 'joao', nome: 'João Melo' } as Usuario
+    const store = useImoveisStore()
+    await store.carregar('ativos')
+    falso.createImovel.mockResolvedValue(imovel('novo', { criadoEm: { toMillis: () => 5000 } }))
+
+    const salvo = await store.salvar(dados)
+
+    expect(falso.createImovel).toHaveBeenCalledWith(dados, { uid: 'joao', nome: 'João Melo' })
+    expect(salvo.id).toBe('novo')
+    expect(store.itens.map((i) => i.id)).toEqual(['novo', 'a', 'b'])
+  })
+
+  it('atualiza com id e substitui o imóvel na lista', async () => {
+    const auth = useAuthStore()
+    auth.usuario = { uid: 'joao', nome: 'João Melo' } as Usuario
+    const store = useImoveisStore()
+    await store.carregar('ativos')
+    falso.updateImovel.mockResolvedValue(imovel('a', { valor: 7 }))
+
+    await store.salvar(dados, 'a')
+
+    expect(falso.updateImovel).toHaveBeenCalledWith('a', dados, { uid: 'joao', nome: 'João Melo' })
+    expect(store.porId('a')?.valor).toBe(7)
+  })
+
+  it('inativar no escopo "ativos" tira o imóvel da lista', async () => {
+    const auth = useAuthStore()
+    auth.usuario = { uid: 'joao', nome: 'João' } as Usuario
+    const store = useImoveisStore()
+    await store.carregar('ativos')
+    falso.updateImovel.mockResolvedValue(imovel('a', { status: 'inativo' }))
+    await store.salvar(dados, 'a')
+    expect(store.porId('a')).toBeUndefined()
+  })
+
+  it('sem usuário logado, recusa e não grava', async () => {
+    const store = useImoveisStore()
+    await expect(store.salvar(dados)).rejects.toThrow('Sessão encerrada.')
+    expect(falso.createImovel).not.toHaveBeenCalled()
   })
 })

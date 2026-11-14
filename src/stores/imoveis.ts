@@ -1,8 +1,8 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { getImovel, listImoveis } from '@/services/imoveis'
+import { createImovel, getImovel, listImoveis, updateImovel } from '@/services/imoveis'
 import { useAuthStore } from '@/stores/auth'
-import type { Imovel } from '@/types'
+import type { DadosImovel, Imovel } from '@/types'
 import { filtrarImoveis, filtrosVazios, temFiltroAtivo, type FiltrosImoveis } from '@/utils/filtros'
 
 /**
@@ -18,6 +18,7 @@ const maisRecentePrimeiro = (a: Imovel, b: Imovel) =>
   (b.criadoEm?.toMillis?.() ?? Date.now()) - (a.criadoEm?.toMillis?.() ?? Date.now())
 
 export const useImoveisStore = defineStore('imoveis', () => {
+  const auth = useAuthStore()
   const itens = ref<Imovel[]>([])
   const escopo = ref<EscopoImoveis | null>(null)
   const carregando = ref(false)
@@ -85,6 +86,19 @@ export const useImoveisStore = defineStore('imoveis', () => {
     else if (escopo.value !== null) itens.value = [...itens.value, imovel].sort(maisRecentePrimeiro)
   }
 
+  /**
+   * Cria (sem `id`) ou atualiza (com `id`) um imóvel e atualiza a lista em memória.
+   * Exige usuário logado: ele vira o autor da gravação.
+   */
+  async function salvar(dados: DadosImovel, id?: string): Promise<Imovel> {
+    const usuario = auth.usuario
+    if (!usuario) throw new Error('Sessão encerrada.')
+    const autor = { uid: usuario.uid, nome: usuario.nome }
+    const imovel = id ? await updateImovel(id, dados, autor) : await createImovel(dados, autor)
+    registrar(imovel)
+    return imovel
+  }
+
   /** Remove da lista em memória (exclusão real, E5). */
   function remover(id: string) {
     itens.value = itens.value.filter((imovel) => imovel.id !== id)
@@ -105,7 +119,6 @@ export const useImoveisStore = defineStore('imoveis', () => {
   }
 
   // Dados e filtros pertencem à sessão: quem entra depois não herda a lista de quem saiu.
-  const auth = useAuthStore()
   watch(
     () => auth.usuario?.uid,
     (uid, anterior) => {
@@ -127,6 +140,7 @@ export const useImoveisStore = defineStore('imoveis', () => {
     carregar,
     obter,
     registrar,
+    salvar,
     remover,
     limparFiltros,
     limpar,
