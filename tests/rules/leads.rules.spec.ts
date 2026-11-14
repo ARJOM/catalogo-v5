@@ -1,6 +1,19 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
+import {
+  assertFails,
+  assertSucceeds,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  Timestamp,
+  updateDoc,
+} from 'firebase/firestore'
 import { criarAmbiente, contextos, dadosLead, semearBase, UID } from './helpers'
 
 let env: RulesTestEnvironment
@@ -50,25 +63,37 @@ describe('leads', () => {
 
   it('edição: ativos editam com atualizadoPor próprio, mesmo lead de outro', async () => {
     const { outroCorretor, admin } = contextos(env)
-    await assertSucceeds(updateDoc(lead(outroCorretor), { telefone: '83911112222', atualizadoPor: UID.outroCorretor }))
-    await assertSucceeds(updateDoc(lead(admin), { nomeComprador: 'Novo', atualizadoPor: UID.admin }))
+    await assertSucceeds(
+      updateDoc(lead(outroCorretor), { telefone: '83911112222', atualizadoPor: UID.outroCorretor }),
+    )
+    await assertSucceeds(
+      updateDoc(lead(admin), { nomeComprador: 'Novo', atualizadoPor: UID.admin }),
+    )
   })
 
   it('edição: nega alterar criadoPor ou criadoEm', async () => {
     const { corretor } = contextos(env)
-    await assertFails(updateDoc(lead(corretor), { criadoPor: UID.outroCorretor, atualizadoPor: UID.corretor }))
-    await assertFails(updateDoc(lead(corretor), { criadoEm: Timestamp.now(), atualizadoPor: UID.corretor }))
+    await assertFails(
+      updateDoc(lead(corretor), { criadoPor: UID.outroCorretor, atualizadoPor: UID.corretor }),
+    )
+    await assertFails(
+      updateDoc(lead(corretor), { criadoEm: Timestamp.now(), atualizadoPor: UID.corretor }),
+    )
   })
 
   it('edição: nega atualizadoPor de outro usuário', async () => {
     const { outroCorretor } = contextos(env)
-    await assertFails(updateDoc(lead(outroCorretor), { telefone: '83911112222', atualizadoPor: UID.corretor }))
+    await assertFails(
+      updateDoc(lead(outroCorretor), { telefone: '83911112222', atualizadoPor: UID.corretor }),
+    )
   })
 
   it('edição: inativo, admin inativo e anônimo não editam', async () => {
     const { inativo, adminInativo, anonimo } = contextos(env)
     await assertFails(updateDoc(lead(inativo), { telefone: '1', atualizadoPor: UID.inativo }))
-    await assertFails(updateDoc(lead(adminInativo), { telefone: '1', atualizadoPor: UID.adminInativo }))
+    await assertFails(
+      updateDoc(lead(adminInativo), { telefone: '1', atualizadoPor: UID.adminInativo }),
+    )
     await assertFails(updateDoc(lead(anonimo), { telefone: '1', atualizadoPor: UID.corretor }))
   })
 

@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import {
+  assertFails,
+  assertSucceeds,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
 import { deleteObject, getDownloadURL, ref, updateMetadata, uploadBytes } from 'firebase/storage'
 import { criarAmbiente, contextos, IMOVEL_ID, semearBase } from './helpers'
 
@@ -47,7 +51,11 @@ describe('storage — upload', () => {
   it('ativos enviam imagem para imóvel existente', async () => {
     const { corretor, admin } = contextos(env)
     await assertSucceeds(uploadBytes(arquivo(corretor, novo), bytes(1000), JPEG))
-    await assertSucceeds(uploadBytes(arquivo(admin, `imoveis/${IMOVEL_ID}/outra.png`), bytes(1000), { contentType: 'image/png' }))
+    await assertSucceeds(
+      uploadBytes(arquivo(admin, `imoveis/${IMOVEL_ID}/outra.png`), bytes(1000), {
+        contentType: 'image/png',
+      }),
+    )
   })
 
   it('nega upload para imovelId inexistente', async () => {
@@ -58,15 +66,29 @@ describe('storage — upload', () => {
 
   it('nega arquivo que não é imagem', async () => {
     const { corretor } = contextos(env)
-    await assertFails(uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/a.pdf`), bytes(1000), { contentType: 'application/pdf' }))
-    await assertFails(uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/a.txt`), bytes(1000), { contentType: 'text/plain' }))
+    await assertFails(
+      uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/a.pdf`), bytes(1000), {
+        contentType: 'application/pdf',
+      }),
+    )
+    await assertFails(
+      uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/a.txt`), bytes(1000), {
+        contentType: 'text/plain',
+      }),
+    )
   })
 
   it('limite de 5 MB: abaixo passa; 5 MB exatos e acima são negados', async () => {
     const { corretor } = contextos(env)
-    await assertSucceeds(uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/quase.jpg`), bytes(5 * MB - 1), JPEG))
-    await assertFails(uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/exato.jpg`), bytes(5 * MB), JPEG))
-    await assertFails(uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/grande.jpg`), bytes(6 * MB), JPEG))
+    await assertSucceeds(
+      uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/quase.jpg`), bytes(5 * MB - 1), JPEG),
+    )
+    await assertFails(
+      uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/exato.jpg`), bytes(5 * MB), JPEG),
+    )
+    await assertFails(
+      uploadBytes(arquivo(corretor, `imoveis/${IMOVEL_ID}/grande.jpg`), bytes(6 * MB), JPEG),
+    )
   })
 
   it('inativo, admin inativo, sem perfil e anônimo não enviam', async () => {

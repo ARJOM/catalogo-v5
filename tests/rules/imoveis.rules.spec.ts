@@ -1,7 +1,19 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc,
+  assertFails,
+  assertSucceeds,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  updateDoc,
 } from 'firebase/firestore'
 import { criarAmbiente, contextos, dadosImovel, IMOVEL_ID, semearBase, UID } from './helpers'
 
@@ -18,7 +30,8 @@ beforeEach(async () => {
 
 type Ctx = ReturnType<typeof contextos>['admin']
 const imovel = (ctx: Ctx, id = IMOVEL_ID) => doc(ctx.firestore(), 'imoveis', id)
-const historico = (ctx: Ctx, id = 'h1') => doc(ctx.firestore(), 'imoveis', IMOVEL_ID, 'historico', id)
+const historico = (ctx: Ctx, id = 'h1') =>
+  doc(ctx.firestore(), 'imoveis', IMOVEL_ID, 'historico', id)
 const registro = (usuarioId: string) => ({
   tipo: 'edicao',
   campo: 'valor',
@@ -51,7 +64,9 @@ describe('imoveis — criação', () => {
   it('corretor e admin criam com criadoPor próprio e status válido', async () => {
     const { corretor, admin } = contextos(env)
     await assertSucceeds(setDoc(imovel(corretor, 'n1'), dadosImovel(UID.corretor)))
-    await assertSucceeds(setDoc(imovel(admin, 'n2'), { ...dadosImovel(UID.admin), status: 'inativo' }))
+    await assertSucceeds(
+      setDoc(imovel(admin, 'n2'), { ...dadosImovel(UID.admin), status: 'inativo' }),
+    )
   })
 
   it('nega criadoPor de outro usuário', async () => {
@@ -61,7 +76,9 @@ describe('imoveis — criação', () => {
 
   it('nega status fora de ativo/inativo', async () => {
     const { corretor } = contextos(env)
-    await assertFails(setDoc(imovel(corretor, 'n1'), { ...dadosImovel(UID.corretor), status: 'excluido' }))
+    await assertFails(
+      setDoc(imovel(corretor, 'n1'), { ...dadosImovel(UID.corretor), status: 'excluido' }),
+    )
   })
 
   it('inativo, admin inativo e não autenticado não criam', async () => {
@@ -75,21 +92,32 @@ describe('imoveis — criação', () => {
 describe('imoveis — edição', () => {
   it('corretor (mesmo não sendo o criador) e admin editam', async () => {
     const { outroCorretor, admin } = contextos(env)
-    await assertSucceeds(updateDoc(imovel(outroCorretor), { valor: 1, atualizadoPor: UID.outroCorretor }))
     await assertSucceeds(
-      updateDoc(imovel(admin), { valor: 2, status: 'inativo', deletadoEm: Timestamp.now(), atualizadoPor: UID.admin }),
+      updateDoc(imovel(outroCorretor), { valor: 1, atualizadoPor: UID.outroCorretor }),
+    )
+    await assertSucceeds(
+      updateDoc(imovel(admin), {
+        valor: 2,
+        status: 'inativo',
+        deletadoEm: Timestamp.now(),
+        atualizadoPor: UID.admin,
+      }),
     )
   })
 
   it('nega alterar criadoPor ou criadoEm', async () => {
     const { corretor } = contextos(env)
-    await assertFails(updateDoc(imovel(corretor), ({
-	criadoPor: UID.corretor,
-	atualizadoPor: UID.corretor,
-	valor: 1,
-	criadoEm: Timestamp.now()
-})))
-    await assertFails(updateDoc(imovel(corretor), { criadoPor: UID.outroCorretor, atualizadoPor: UID.corretor }))
+    await assertFails(
+      updateDoc(imovel(corretor), {
+        criadoPor: UID.corretor,
+        atualizadoPor: UID.corretor,
+        valor: 1,
+        criadoEm: Timestamp.now(),
+      }),
+    )
+    await assertFails(
+      updateDoc(imovel(corretor), { criadoPor: UID.outroCorretor, atualizadoPor: UID.corretor }),
+    )
   })
 
   it('nega atualizadoPor diferente do usuário', async () => {
@@ -99,13 +127,17 @@ describe('imoveis — edição', () => {
 
   it('nega status fora de ativo/inativo', async () => {
     const { corretor } = contextos(env)
-    await assertFails(updateDoc(imovel(corretor), { status: 'excluido', atualizadoPor: UID.corretor }))
+    await assertFails(
+      updateDoc(imovel(corretor), { status: 'excluido', atualizadoPor: UID.corretor }),
+    )
   })
 
   it('inativo, admin inativo e não autenticado não editam', async () => {
     const { inativo, adminInativo, anonimo } = contextos(env)
     await assertFails(updateDoc(imovel(inativo), { valor: 1, atualizadoPor: UID.inativo }))
-    await assertFails(updateDoc(imovel(adminInativo), { valor: 1, atualizadoPor: UID.adminInativo }))
+    await assertFails(
+      updateDoc(imovel(adminInativo), { valor: 1, atualizadoPor: UID.adminInativo }),
+    )
     await assertFails(updateDoc(imovel(anonimo), { valor: 1, atualizadoPor: UID.corretor }))
   })
 })
@@ -144,8 +176,15 @@ describe('historico', () => {
 
   it('criação: nega timestamp que não seja o horário do servidor', async () => {
     const { corretor } = contextos(env)
-    await assertFails(setDoc(historico(corretor, 'r1'), { ...registro(UID.corretor), timestamp: Timestamp.fromDate(new Date('2020-01-01')) }))
-    await assertFails(setDoc(historico(corretor, 'r1'), { ...registro(UID.corretor), timestamp: Timestamp.now() }))
+    await assertFails(
+      setDoc(historico(corretor, 'r1'), {
+        ...registro(UID.corretor),
+        timestamp: Timestamp.fromDate(new Date('2020-01-01')),
+      }),
+    )
+    await assertFails(
+      setDoc(historico(corretor, 'r1'), { ...registro(UID.corretor), timestamp: Timestamp.now() }),
+    )
   })
 
   it('criação: inativo, admin inativo e não autenticado não criam', async () => {

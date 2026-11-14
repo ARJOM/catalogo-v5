@@ -1,9 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import {
-  initializeTestEnvironment,
-  type RulesTestEnvironment,
-} from '@firebase/rules-unit-testing'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { doc, setDoc, Timestamp } from 'firebase/firestore'
 
 /**

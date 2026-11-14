@@ -64,7 +64,9 @@ describe('createImovel / updateImovel', () => {
     expect(atualizado.valor).toBe(480000)
     expect(atualizado.quartos).toBe(3)
     expect(atualizado.criadoEm.toMillis()).toBe(criado.criadoEm.toMillis())
-    expect(atualizado.atualizadoEm.toMillis()).toBeGreaterThanOrEqual(criado.atualizadoEm.toMillis())
+    expect(atualizado.atualizadoEm.toMillis()).toBeGreaterThanOrEqual(
+      criado.atualizadoEm.toMillis(),
+    )
     const bruto = (await getDoc(doc(db, 'imoveis', criado.id))).data()
     expect(bruto?.fotos).toEqual([])
   })

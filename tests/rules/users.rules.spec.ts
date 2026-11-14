@@ -1,6 +1,19 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
+import {
+  assertFails,
+  assertSucceeds,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  Timestamp,
+  updateDoc,
+} from 'firebase/firestore'
 import { criarAmbiente, contextos, dadosUsuario, semearBase, UID } from './helpers'
 
 let env: RulesTestEnvironment
@@ -88,7 +101,9 @@ describe('users — atualização', () => {
 
   it('corretor altera o próprio nome (com ou sem atualizadoEm)', async () => {
     const { corretor } = contextos(env)
-    await assertSucceeds(updateDoc(ref(corretor, UID.corretor), { nome: 'Novo', atualizadoEm: agora() }))
+    await assertSucceeds(
+      updateDoc(ref(corretor, UID.corretor), { nome: 'Novo', atualizadoEm: agora() }),
+    )
     await assertSucceeds(updateDoc(ref(corretor, UID.corretor), { nome: 'Outro' }))
   })
 

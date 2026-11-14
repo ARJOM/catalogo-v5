@@ -23,8 +23,8 @@ export function criarRouter(history: RouterHistory = createWebHistory(import.met
       {
         path: '/imoveis/novo',
         name: 'imovel-novo',
-        component: emBreve,
-        meta: { titulo: 'Cadastrar imóvel', epic: 'E4', requiresAuth: true },
+        component: () => import('@/views/ImovelFormView.vue'),
+        meta: { titulo: 'Cadastrar imóvel', requiresAuth: true },
       },
       {
         path: '/imoveis/:id',
