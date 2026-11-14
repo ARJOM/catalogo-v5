@@ -12,6 +12,8 @@
   --brand-dk:  #0F6E56;
   --brand-bg:  #E1F5EE;
   --brand-900: #085041;
+  /* Verde da marca para texto sobre --brand-bg e as superfícies; --brand-dk fica para fundos (hover). */
+  --brand-text: #0F6E56;
   --blue-bg:   #E6F1FB;
   --blue:      #185FA5;
   --blue-dk:   #0C447C;
@@ -35,9 +37,15 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #1A1A18; --surface: #242422; --surface-2: #2E2E2B;
-    --text: #F0EFE8; --text-2: #AAAAAA; --text-3: #666660;
+    --text: #F0EFE8; --text-2: #AAAAAA;
     --border: rgba(255,255,255,.08); --border-2: rgba(255,255,255,.16);
     --brand-bg: #04342C; --blue-bg: #042C53; --red-bg: #501313;
     --amber-bg: #412402; --green-bg: #173404; --coral-bg: #4A1B0C;
+    /* Acréscimo do app: o protótipo não redefine as cores de texto no escuro, e os
+       tons do claro ficavam com contraste de ~2:1 (WCAG pede 4,5:1). Valores abaixo
+       têm 6:1 ou mais sobre os fundos tingidos e sobre --surface. */
+    --text-3: #8C8C84;
+    --red: #F09595; --green: #97C459; --amber: #EF9F27; --coral: #F0997B;
+    --blue: #85B7EB; --blue-dk: #B5D4F4; --brand-text: #5DCAA5;
   }
 }

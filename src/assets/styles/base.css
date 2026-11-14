@@ -14,11 +14,11 @@ select, input, textarea, button { font-family: var(--f); }
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 16px;
 }
-.logo { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; color: var(--brand-dk); letter-spacing: -.3px; }
+.logo { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; color: var(--brand-text); letter-spacing: -.3px; }
 .logo i { font-size: 20px; }
 .logo-v { color: var(--text-3); font-weight: 400; font-size: 12px; }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
-.av { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; font-weight: 600; background: var(--brand-bg); color: var(--brand-dk); flex-shrink: 0; }
+.av { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; font-weight: 600; background: var(--brand-bg); color: var(--brand-text); flex-shrink: 0; }
 .av-32 { width: 32px; height: 32px; }
 .av-26 { width: 26px; height: 26px; font-size: 10px; }
 .av-20 { width: 20px; height: 20px; font-size: 8px; }
@@ -41,7 +41,7 @@ select, input, textarea, button { font-family: var(--f); }
 .si { display: flex; align-items: center; gap: 9px; padding: 9px 16px; font-size: 13px; color: var(--text-2); cursor: pointer; border-left: 2px solid transparent; transition: all .1s; }
 .si i { font-size: 16px; flex-shrink: 0; }
 .si:hover { background: var(--surface-2); color: var(--text); }
-.si.on { color: var(--brand-dk); border-left-color: var(--brand); background: var(--brand-bg); font-weight: 500; }
+.si.on { color: var(--brand-text); border-left-color: var(--brand); background: var(--brand-bg); font-weight: 500; }
 .si.danger { color: var(--coral); }
 .si.danger:hover { background: var(--coral-bg); }
 .si-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); padding: 12px 16px 4px; }
@@ -59,7 +59,7 @@ select, input, textarea, button { font-family: var(--f); }
 }
 .bn-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: var(--text-3); cursor: pointer; min-width: 56px; padding: 6px 0; border: none; background: none; font-family: var(--f); transition: color .1s; }
 .bn-item i { font-size: 22px; }
-.bn-item.on { color: var(--brand-dk); font-weight: 500; }
+.bn-item.on { color: var(--brand-text); font-weight: 500; }
 
 /* ── MAIN ── */
 .main { flex: 1; padding: 20px 16px; overflow: auto; min-width: 0; }
@@ -89,11 +89,11 @@ select, input, textarea, button { font-family: var(--f); }
 .badge i { font-size: 11px; }
 .b-ativo { background: var(--green-bg); color: var(--green); }
 .b-inativo { background: var(--surface-2); color: var(--text-3); }
-.b-venda { background: var(--brand-bg); color: var(--brand-dk); }
+.b-venda { background: var(--brand-bg); color: var(--brand-text); }
 .b-aluguel { background: var(--blue-bg); color: var(--blue-dk); }
 .b-tipo { background: rgba(0,0,0,.48); color: #fff; }
 .b-admin { background: var(--coral-bg); color: var(--coral); }
-.b-corretor { background: var(--brand-bg); color: var(--brand-dk); }
+.b-corretor { background: var(--brand-bg); color: var(--brand-text); }
 
 /* ── CARD ── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); overflow: hidden; box-shadow: var(--sh); }
@@ -171,7 +171,7 @@ select, input, textarea, button { font-family: var(--f); }
 /* ── MOBILE ROW LEAD ── */
 .lead-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
 .lead-row:last-child { border-bottom: none; }
-.lead-av { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-bg); color: var(--brand-dk); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.lead-av { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-bg); color: var(--brand-text); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .lead-info { flex: 1; min-width: 0; }
 .lead-name { font-size: 13px; font-weight: 500; color: var(--text); }
 .lead-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
@@ -182,7 +182,7 @@ select, input, textarea, button { font-family: var(--f); }
 .hist-left { display: flex; align-items: center; gap: 10px; }
 .hicon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
 .hicon.edit { background: var(--amber-bg); color: var(--amber); }
-.hicon.create { background: var(--brand-bg); color: var(--brand-dk); }
+.hicon.create { background: var(--brand-bg); color: var(--brand-text); }
 .hist-desc { font-size: 12px; color: var(--text); line-height: 1.5; }
 .hist-meta { font-size: 11px; color: var(--text-3); text-align: right; line-height: 1.6; flex-shrink: 0; }
 
@@ -203,7 +203,7 @@ textarea.finp { height: 80px; padding: 9px 11px; resize: none; }
 .upload-area p { font-size: 13px; color: var(--text-2); }
 .upload-area small { font-size: 11px; color: var(--text-3); }
 .foto-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.fthumb { width: 62px; height: 62px; border-radius: var(--r); background: var(--brand-bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; color: var(--brand-dk); position: relative; cursor: pointer; }
+.fthumb { width: 62px; height: 62px; border-radius: var(--r); background: var(--brand-bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; color: var(--brand-text); position: relative; cursor: pointer; }
 .fthumb-add { background: var(--surface-2); color: var(--text-3); border: 2px dashed var(--border-2); font-size: 20px; }
 .frm { width: 14px; height: 14px; border-radius: 50%; background: #E24B4A; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; position: absolute; top: -5px; right: -5px; }
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px; }
