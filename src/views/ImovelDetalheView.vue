@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BaseBadge from '@/components/BaseBadge.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import FotoCarrossel from '@/components/FotoCarrossel.vue'
+import HistoricoList from '@/components/HistoricoList.vue'
 import LeadsDoImovel from '@/components/LeadsDoImovel.vue'
 import { useImoveisStore } from '@/stores/imoveis'
 import { useUsuariosStore } from '@/stores/usuarios'
@@ -175,4 +176,6 @@ function voltar() {
       <LeadsDoImovel :imovel="imovel" />
     </div>
   </div>
+
+  <HistoricoList v-if="imovel" :imovel-id="imovel.id" />
 </template>
