@@ -25,6 +25,15 @@ export default defineConfigWithVueTs(
     ...pluginVitest.configs.recommended,
     files: ['tests/**/*'],
   },
+  {
+    files: ['tests/rules/**/*'],
+    rules: {
+      'vitest/expect-expect': [
+        'error',
+        { assertFunctionNames: ['expect', 'assertSucceeds', 'assertFails'] },
+      ],
+    },
+  },
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
