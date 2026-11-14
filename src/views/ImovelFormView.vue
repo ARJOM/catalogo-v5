@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseInput from '@/components/BaseInput.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
+import FotoUploader from '@/components/FotoUploader.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useImoveisStore } from '@/stores/imoveis'
 import { useUsuariosStore } from '@/stores/usuarios'
 import { UFS } from '@/utils/estados'
+import type { ItemFoto } from '@/utils/fotos'
 import { mascararNumero, mascararTelefone, soDigitos } from '@/utils/mascaras'
 import { FINALIDADES, TIPOS_IMOVEL } from '@/utils/tiposImovel'
 import {
@@ -67,16 +69,68 @@ const opcoesCaptador = computed(() => {
 })
 
 const erroGeral = ref('')
+const avisoFotos = ref('')
+const fotos = ref<ItemFoto[]>([])
+/**
+ * Id do imóvel já gravado. Fica preenchido depois do primeiro "Salvar": se alguma foto falhar,
+ * o formulário continua aberto e um novo "Salvar" atualiza o mesmo imóvel (sem duplicar).
+ */
+const idAtual = ref<string | null>(null)
+/** URLs das fotos que o imóvel já tem no servidor; as que sumirem da lista são removidas. */
+const urlsSalvas = ref<string[]>([])
+
+const editando = computed(() => idAtual.value !== null)
+
+const nomesDe = (itens: { nome: string }[]) => itens.map((i) => `"${i.nome}"`).join(', ')
 
 const enviar = handleSubmit(
   async (valores) => {
     erroGeral.value = ''
+    avisoFotos.value = ''
+    if (fotos.value.some((f) => f.estado === 'comprimindo')) {
+      erroGeral.value = 'Aguarde o fim da compressão das fotos para salvar.'
+      return
+    }
+    const pendentes = fotos.value.filter((f) => f.arquivo)
+    const urlsAtuais = fotos.value.flatMap((f) => (f.url ? [f.url] : []))
+    let resultado
     try {
-      const salvo = await imoveis.salvar(paraDadosImovel(valores))
-      await router.replace({ name: 'imovel-detalhe', params: { id: salvo.id } })
+      resultado = await imoveis.salvar(paraDadosImovel(valores), idAtual.value ?? undefined, {
+        novas: pendentes.map((f) => ({ id: f.id, nome: f.nome, arquivo: f.arquivo! })),
+        removidas: urlsSalvas.value.filter((url) => !urlsAtuais.includes(url)),
+        aoAtualizar: (id, parcial) => {
+          const item = fotos.value.find((f) => f.id === id)
+          if (item) Object.assign(item, parcial)
+        },
+      })
     } catch {
       erroGeral.value = 'Não foi possível salvar o imóvel. Tente novamente.'
+      return
     }
+
+    idAtual.value = resultado.imovel.id
+    for (const item of fotos.value) {
+      const url = resultado.enviadas[item.id]
+      if (url) {
+        item.url = url
+        item.arquivo = undefined
+      }
+    }
+    urlsSalvas.value = resultado.imovel.fotos
+
+    if (resultado.erroNasFotos) {
+      avisoFotos.value =
+        'O imóvel foi salvo, mas as alterações nas fotos não puderam ser gravadas. ' +
+        'Salve de novo para tentar outra vez.'
+    } else if (resultado.falhas.length > 0) {
+      const quantas = resultado.falhas.length
+      avisoFotos.value =
+        `O imóvel foi salvo, mas ${quantas === 1 ? '1 foto não subiu' : `${quantas} fotos não subiram`}: ` +
+        `${nomesDe(resultado.falhas)}. Salve de novo para tentar outra vez ou envie-as depois, ` +
+        'editando o imóvel.'
+    }
+    if (avisoFotos.value) return
+    await router.replace({ name: 'imovel-detalhe', params: { id: resultado.imovel.id } })
   },
   // Leva o foco ao primeiro campo com erro.
   async () => {
@@ -100,7 +154,7 @@ const mascaraArea = (texto: string) => mascararNumero(texto, 2)
   <form novalidate @submit.prevent="enviar">
     <div class="ph">
       <div>
-        <h1 class="ph-title">Novo imóvel</h1>
+        <h1 class="ph-title">{{ editando ? 'Editar imóvel' : 'Novo imóvel' }}</h1>
         <div class="ph-sub">Preencha os dados abaixo</div>
       </div>
       <div class="acoes-topo">
@@ -119,6 +173,25 @@ const mascaraArea = (texto: string) => mascararNumero(texto, 2)
 
     <div v-if="erroGeral" class="lalert" role="alert">
       <i class="ti ti-alert-circle" aria-hidden="true"></i> {{ erroGeral }}
+    </div>
+
+    <div v-if="avisoFotos" class="lalert" role="alert">
+      <i class="ti ti-photo-exclamation" aria-hidden="true"></i>
+      <div>
+        {{ avisoFotos }}
+        <RouterLink
+          v-if="idAtual"
+          class="link-aviso"
+          :to="{ name: 'imovel-detalhe', params: { id: idAtual } }"
+        >
+          Abrir o imóvel
+        </RouterLink>
+      </div>
+    </div>
+
+    <div class="fsec">
+      <div class="fsec-title"><i class="ti ti-photo" aria-hidden="true"></i> Fotos</div>
+      <FotoUploader v-model="fotos" :desabilitado="isSubmitting" />
     </div>
 
     <div class="fsec">
@@ -266,6 +339,13 @@ const mascaraArea = (texto: string) => mascararNumero(texto, 2)
 .acoes-topo {
   display: flex;
   gap: 8px;
+}
+.link-aviso {
+  display: block;
+  margin-top: 4px;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
 }
 .so-mobile {
   display: none;

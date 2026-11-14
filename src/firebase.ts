@@ -20,6 +20,8 @@ export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+// Sem isto um upload que não consegue avançar tenta por 10 minutos e o formulário fica travado.
+storage.maxUploadRetryTime = 60_000
 
 // Em desenvolvimento (`npm run dev` e testes) tudo fala com o Emulator Suite,
 // nunca com o projeto real. Portas conforme firebase.json.

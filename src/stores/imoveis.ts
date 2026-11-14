@@ -1,6 +1,13 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { createImovel, getImovel, listImoveis, updateImovel } from '@/services/imoveis'
+import {
+  atualizarFotos,
+  createImovel,
+  getImovel,
+  listImoveis,
+  updateImovel,
+} from '@/services/imoveis'
+import { deleteFoto, uploadFoto } from '@/services/storage'
 import { useAuthStore } from '@/stores/auth'
 import type { DadosImovel, Imovel } from '@/types'
 import { filtrarImoveis, filtrosVazios, temFiltroAtivo, type FiltrosImoveis } from '@/utils/filtros'
@@ -16,6 +23,55 @@ const MENSAGEM_ERRO_LISTA = 'Não foi possível carregar os imóveis. Tente nova
 /** Mais recentes primeiro, como a consulta do servidor. */
 const maisRecentePrimeiro = (a: Imovel, b: Imovel) =>
   (b.criadoEm?.toMillis?.() ?? Date.now()) - (a.criadoEm?.toMillis?.() ?? Date.now())
+
+/** Foto nova, já comprimida, à espera do envio. */
+export interface NovaFoto {
+  /** Identificador do item no formulário; volta em `enviadas` e `falhas`. */
+  id: string
+  nome: string
+  arquivo: Blob
+}
+
+export interface PlanoDeFotos {
+  novas?: NovaFoto[]
+  /** URLs das fotos a retirar do imóvel e do Storage. */
+  removidas?: string[]
+  /** Acompanha o envio de cada foto nova. */
+  aoAtualizar?: (
+    id: string,
+    parcial: { estado: 'enviando' | 'enviada' | 'falhou'; progresso: number },
+  ) => void
+}
+
+export interface FalhaDeFoto {
+  id: string
+  nome: string
+  erro: unknown
+}
+
+export interface ResultadoSalvar {
+  imovel: Imovel
+  /** URL de download por id das fotos novas que subiram. */
+  enviadas: Record<string, string>
+  /** Fotos novas que não subiram (o imóvel foi salvo mesmo assim). */
+  falhas: FalhaDeFoto[]
+  /** Fotos removidas do imóvel cujo arquivo não pôde ser apagado do Storage. */
+  naoApagadas: number
+  /** Preenchido se as mudanças de fotos não puderam ser gravadas no imóvel (passo 3). */
+  erroNasFotos: unknown
+}
+
+/** Uploads simultâneos: o bastante para ganhar tempo sem abrir dezenas de conexões. */
+const LOTE_DE_UPLOADS = 3
+
+/** Executa `tarefa` para cada item, no máximo `limite` ao mesmo tempo. */
+async function emLotes<T>(itens: T[], limite: number, tarefa: (item: T) => Promise<void>) {
+  const fila = [...itens]
+  const trabalhadores = Array.from({ length: Math.min(limite, fila.length) }, async () => {
+    for (let item = fila.shift(); item !== undefined; item = fila.shift()) await tarefa(item)
+  })
+  await Promise.all(trabalhadores)
+}
 
 export const useImoveisStore = defineStore('imoveis', () => {
   const auth = useAuthStore()
@@ -87,16 +143,69 @@ export const useImoveisStore = defineStore('imoveis', () => {
   }
 
   /**
-   * Cria (sem `id`) ou atualiza (com `id`) um imóvel e atualiza a lista em memória.
+   * Cria (sem `id`) ou atualiza (com `id`) um imóvel e as fotos, e atualiza a lista em memória.
    * Exige usuário logado: ele vira o autor da gravação.
+   *
+   * Em três passos, para que uma falha de foto nunca perca o cadastro:
+   * 1. grava o documento (se isto falhar, nada foi salvo e o erro sobe);
+   * 2. envia cada foto nova ao Storage (a regra exige que o imóvel já exista);
+   * 3. grava as URLs enviadas em `fotos[]` e só então apaga do Storage as fotos removidas.
+   * Foto que não sobe vai para `falhas` e o imóvel continua salvo; as demais seguem.
    */
-  async function salvar(dados: DadosImovel, id?: string): Promise<Imovel> {
+  async function salvar(
+    dados: DadosImovel,
+    id?: string,
+    fotos: PlanoDeFotos = {},
+  ): Promise<ResultadoSalvar> {
     const usuario = auth.usuario
     if (!usuario) throw new Error('Sessão encerrada.')
     const autor = { uid: usuario.uid, nome: usuario.nome }
-    const imovel = id ? await updateImovel(id, dados, autor) : await createImovel(dados, autor)
+    const { novas = [], removidas = [], aoAtualizar } = fotos
+
+    // Passo 1
+    let imovel = id ? await updateImovel(id, dados, autor) : await createImovel(dados, autor)
     registrar(imovel)
-    return imovel
+
+    // Passo 2
+    const enviadas: Record<string, string> = {}
+    const falhas: FalhaDeFoto[] = []
+    await emLotes(novas, LOTE_DE_UPLOADS, async (foto) => {
+      aoAtualizar?.(foto.id, { estado: 'enviando', progresso: 0 })
+      try {
+        enviadas[foto.id] = await uploadFoto(imovel.id, foto.arquivo, (progresso) =>
+          aoAtualizar?.(foto.id, { estado: 'enviando', progresso }),
+        )
+        aoAtualizar?.(foto.id, { estado: 'enviada', progresso: 100 })
+      } catch (erro) {
+        falhas.push({ id: foto.id, nome: foto.nome, erro })
+        aoAtualizar?.(foto.id, { estado: 'falhou', progresso: 0 })
+      }
+    })
+
+    // Passo 3
+    let naoApagadas = 0
+    const urlsEnviadas = Object.values(enviadas)
+    if (urlsEnviadas.length > 0 || removidas.length > 0) {
+      try {
+        imovel = await atualizarFotos(imovel.id, { adicionadas: urlsEnviadas, removidas }, autor)
+        registrar(imovel)
+      } catch (erro) {
+        // As fotos já estão no Storage mas não no imóvel: apaga-as para não deixar órfãs e
+        // trata todas como falhas; as remoções não aconteceram, então nada foi apagado.
+        await Promise.allSettled(urlsEnviadas.map((url) => deleteFoto(url)))
+        for (const foto of novas) {
+          if (enviadas[foto.id]) {
+            falhas.push({ id: foto.id, nome: foto.nome, erro })
+            aoAtualizar?.(foto.id, { estado: 'falhou', progresso: 0 })
+            delete enviadas[foto.id]
+          }
+        }
+        return { imovel, enviadas, falhas, naoApagadas: 0, erroNasFotos: erro }
+      }
+      const resultados = await Promise.allSettled(removidas.map((url) => deleteFoto(url)))
+      naoApagadas = resultados.filter((r) => r.status === 'rejected').length
+    }
+    return { imovel, enviadas, falhas, naoApagadas, erroNasFotos: null }
   }
 
   /** Remove da lista em memória (exclusão real, E5). */

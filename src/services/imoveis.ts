@@ -5,6 +5,7 @@ import {
   getDocs,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -70,6 +71,39 @@ export async function updateImovel(id: string, dados: DadosImovel, autor: Autor)
     ...limpar(dados),
     atualizadoEm: serverTimestamp(),
     atualizadoPor: autor.uid,
+  })
+  return paraImovel(await getDoc(referencia))!
+}
+
+export interface AlteracaoDeFotos {
+  /** URLs de download das fotos recém-enviadas, a acrescentar ao fim de `fotos[]`. */
+  adicionadas: string[]
+  /** URLs a retirar de `fotos[]`. */
+  removidas: string[]
+}
+
+/**
+ * Aplica as mudanças de fotos em `fotos[]` numa transação (o array é lido e regravado, pois o
+ * Firestore não aceita `arrayUnion` e `arrayRemove` no mesmo campo de uma só escrita).
+ * Não mexe nos arquivos do Storage.
+ */
+export async function atualizarFotos(
+  id: string,
+  { adicionadas, removidas }: AlteracaoDeFotos,
+  autor: Autor,
+): Promise<Imovel> {
+  const referencia = doc(db, 'imoveis', id)
+  await runTransaction(db, async (transacao) => {
+    const atual = await transacao.get(referencia)
+    if (!atual.exists()) throw new Error('Imóvel não encontrado.')
+    const fotos = (atual.data().fotos as string[] | undefined) ?? []
+    const novas = fotos.filter((url) => !removidas.includes(url))
+    for (const url of adicionadas) if (!novas.includes(url)) novas.push(url)
+    transacao.update(referencia, {
+      fotos: novas,
+      atualizadoEm: serverTimestamp(),
+      atualizadoPor: autor.uid,
+    })
   })
   return paraImovel(await getDoc(referencia))!
 }

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, useId } from 'vue'
-import { comprimirFoto, ehFotoAceita, TIPOS_DE_FOTO, type ItemFoto } from '@/utils/fotos'
+import {
+  comprimirFoto,
+  ehFotoAceita,
+  TAMANHO_MAXIMO_ORIGINAL,
+  TIPOS_DE_FOTO,
+  type ItemFoto,
+} from '@/utils/fotos'
 
 const props = defineProps<{
   /** Trava a adição e a remoção (durante o envio). */
@@ -39,6 +45,10 @@ async function adicionar(evento: Event) {
   for (const arquivo of escolhidas) {
     if (!ehFotoAceita(arquivo)) {
       avisos.push(`"${arquivo.name}" não é uma imagem JPG, PNG ou WebP.`)
+      continue
+    }
+    if (arquivo.size > TAMANHO_MAXIMO_ORIGINAL) {
+      avisos.push(`"${arquivo.name}" é grande demais (máximo de 25 MB).`)
       continue
     }
     novas.push({

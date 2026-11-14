@@ -6,6 +6,10 @@ import type { Usuario } from '@/types'
 
 const falso = vi.hoisted(() => ({
   createImovel: vi.fn<(dados: unknown, autor: unknown) => Promise<unknown>>(),
+  updateImovel: vi.fn<(id: string, dados: unknown, autor: unknown) => Promise<unknown>>(),
+  atualizarFotos: vi.fn<(id: string, alteracao: unknown, autor: unknown) => Promise<unknown>>(),
+  uploadFoto: vi.fn<(id: string, arquivo: Blob) => Promise<string>>(),
+  comprimir: vi.fn<(arquivo: File) => Promise<File>>(),
   push: vi.fn<(destino: unknown) => Promise<void>>(),
   replace: vi.fn<(destino: unknown) => Promise<void>>(),
 }))
@@ -13,8 +17,14 @@ vi.mock('@/services/imoveis', () => ({
   listImoveis: vi.fn<() => void>(),
   getImovel: vi.fn<() => void>(),
   createImovel: falso.createImovel,
-  updateImovel: vi.fn<() => void>(),
+  updateImovel: falso.updateImovel,
+  atualizarFotos: falso.atualizarFotos,
 }))
+vi.mock('@/services/storage', () => ({
+  uploadFoto: falso.uploadFoto,
+  deleteFoto: vi.fn<() => void>(),
+}))
+vi.mock('browser-image-compression', () => ({ default: falso.comprimir }))
 vi.mock('@/services/auth', () => ({
   entrar: vi.fn<() => void>(),
   sair: vi.fn<() => void>(),
@@ -30,6 +40,7 @@ vi.mock('@/services/users', () => ({
   ]),
 }))
 vi.mock('vue-router', () => ({
+  RouterLink: { template: '<a><slot /></a>' },
   useRouter: () => ({ push: falso.push, replace: falso.replace, back: vi.fn<() => void>() }),
   useRoute: () => ({ params: {} }),
 }))
@@ -61,6 +72,15 @@ async function enviar(w: ReturnType<typeof montar>) {
 
 beforeEach(() => {
   falso.createImovel.mockReset()
+  falso.updateImovel.mockReset()
+  falso.atualizarFotos.mockReset()
+  falso.uploadFoto.mockReset()
+  falso.comprimir.mockReset().mockImplementation((a) => Promise.resolve(a))
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: () => 'blob:x',
+    revokeObjectURL: vi.fn<() => void>(),
+  })
   falso.push.mockReset()
   falso.replace.mockReset().mockResolvedValue()
 })
@@ -164,6 +184,76 @@ describe('ImovelFormView', () => {
     await enviar(w)
     expect(w.find('[role="alert"]').text()).toContain('Não foi possível salvar o imóvel')
     expect(falso.replace).not.toHaveBeenCalled()
+    w.unmount()
+  })
+
+  async function preencher(w: ReturnType<typeof montar>) {
+    await flushPromises()
+    await campo(w, 'Valor').setValue('1')
+    await campo(w, 'Área').setValue('1')
+    await campo(w, 'Rua').setValue('R')
+    await campo(w, 'Bairro').setValue('B')
+    await campo(w, 'Cidade').setValue('C')
+    await campo(w, 'Nome do cliente').setValue('F')
+    await campo(w, 'Telefone').setValue('83999990000')
+  }
+
+  async function escolherFotos(w: ReturnType<typeof montar>, nomes: string[]) {
+    const input = w.find('input[type=file]')
+    const arquivos = nomes.map((n) => new File(['x'], n, { type: 'image/png' }))
+    Object.defineProperty(input.element, 'files', { value: arquivos, configurable: true })
+    await input.trigger('change')
+    await flushPromises()
+  }
+
+  it('foto que falha: o imóvel fica salvo, o aviso nomeia a foto e o formulário continua aberto', async () => {
+    falso.createImovel.mockResolvedValue({
+      id: 'novo',
+      status: 'ativo',
+      fotos: [],
+      criadoEm: { toMillis: () => 1 },
+    })
+    falso.uploadFoto.mockImplementation((_id, arquivo) =>
+      (arquivo as File).name === 'ruim.png'
+        ? Promise.reject(new Error('unauthorized'))
+        : Promise.resolve('https://s/boa'),
+    )
+    falso.atualizarFotos.mockResolvedValue({
+      id: 'novo',
+      status: 'ativo',
+      fotos: ['https://s/boa'],
+      criadoEm: { toMillis: () => 1 },
+    })
+    const w = montar()
+    await preencher(w)
+    await escolherFotos(w, ['boa.png', 'ruim.png'])
+    await enviar(w)
+
+    const aviso = w.find('[role="alert"]').text()
+    expect(aviso).toContain('O imóvel foi salvo, mas 1 foto não subiu: "ruim.png"')
+    expect(falso.replace).not.toHaveBeenCalled()
+    expect(w.find('h1').text()).toBe('Editar imóvel')
+    expect(w.findAll('.fthumb-estado').map((e) => e.text())).toEqual(['Falhou'])
+
+    // Salvar de novo atualiza o mesmo imóvel (não duplica) e reenvia só a foto que falhou.
+    falso.uploadFoto.mockReset().mockResolvedValue('https://s/ruim')
+    falso.updateImovel.mockResolvedValue({
+      id: 'novo',
+      status: 'ativo',
+      fotos: ['https://s/boa'],
+      criadoEm: { toMillis: () => 1 },
+    })
+    falso.atualizarFotos.mockResolvedValue({
+      id: 'novo',
+      status: 'ativo',
+      fotos: ['https://s/boa', 'https://s/ruim'],
+      criadoEm: { toMillis: () => 1 },
+    })
+    await enviar(w)
+    expect(falso.createImovel).toHaveBeenCalledTimes(1)
+    expect(falso.updateImovel).toHaveBeenCalledWith('novo', expect.anything(), expect.anything())
+    expect(falso.uploadFoto).toHaveBeenCalledTimes(1)
+    expect(falso.replace).toHaveBeenCalledWith({ name: 'imovel-detalhe', params: { id: 'novo' } })
     w.unmount()
   })
 })

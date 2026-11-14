@@ -68,6 +68,16 @@ describe('FotoUploader', () => {
     expect(w.find('[role=alert]').text()).toContain('"doc.pdf" não é uma imagem')
   })
 
+  it('recusa arquivo com mais de 25 MB sem tentar comprimir', async () => {
+    const { w, itens } = montar()
+    const enorme = imagem('enorme.png')
+    Object.defineProperty(enorme, 'size', { value: 26 * 1024 * 1024 })
+    await escolher(w, [enorme])
+    expect(itens.value).toEqual([])
+    expect(falso.comprimir).not.toHaveBeenCalled()
+    expect(w.find('[role=alert]').text()).toContain('"enorme.png" é grande demais')
+  })
+
   it('se a compressão falha, tira a foto e avisa', async () => {
     falso.comprimir.mockRejectedValueOnce(new Error('x'))
     const { w, itens } = montar()

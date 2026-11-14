@@ -9,12 +9,22 @@ const falso = vi.hoisted(() => ({
   getImovel: vi.fn<(id: string) => Promise<unknown>>(),
   createImovel: vi.fn<(dados: unknown, autor: unknown) => Promise<unknown>>(),
   updateImovel: vi.fn<(id: string, dados: unknown, autor: unknown) => Promise<unknown>>(),
+  atualizarFotos: vi.fn<(id: string, alteracao: unknown, autor: unknown) => Promise<unknown>>(),
+  uploadFoto:
+    vi.fn<(id: string, arquivo: Blob, aoProgredir?: (p: number) => void) => Promise<string>>(),
+  deleteFoto: vi.fn<(url: string) => Promise<void>>(),
+  ordem: [] as string[],
 }))
 vi.mock('@/services/imoveis', () => ({
   listImoveis: falso.listImoveis,
   getImovel: falso.getImovel,
   createImovel: falso.createImovel,
   updateImovel: falso.updateImovel,
+  atualizarFotos: falso.atualizarFotos,
+}))
+vi.mock('@/services/storage', () => ({
+  uploadFoto: falso.uploadFoto,
+  deleteFoto: falso.deleteFoto,
 }))
 vi.mock('@/services/auth', () => ({
   entrar: vi.fn<() => void>(),
@@ -51,6 +61,10 @@ beforeEach(() => {
   falso.getImovel.mockReset()
   falso.createImovel.mockReset()
   falso.updateImovel.mockReset()
+  falso.atualizarFotos.mockReset()
+  falso.uploadFoto.mockReset()
+  falso.deleteFoto.mockReset().mockResolvedValue()
+  falso.ordem.length = 0
 })
 
 describe('carregar', () => {
@@ -183,7 +197,7 @@ describe('salvar', () => {
     const salvo = await store.salvar(dados)
 
     expect(falso.createImovel).toHaveBeenCalledWith(dados, { uid: 'joao', nome: 'João Melo' })
-    expect(salvo.id).toBe('novo')
+    expect(salvo.imovel.id).toBe('novo')
     expect(store.itens.map((i) => i.id)).toEqual(['novo', 'a', 'b'])
   })
 
@@ -214,5 +228,118 @@ describe('salvar', () => {
     const store = useImoveisStore()
     await expect(store.salvar(dados)).rejects.toThrow('Sessão encerrada.')
     expect(falso.createImovel).not.toHaveBeenCalled()
+  })
+})
+
+describe('salvar com fotos (três passos)', () => {
+  const dados = { tipo: 'Casa', valor: 1 } as unknown as DadosImovel
+  const foto = (id: string) => ({
+    id,
+    nome: `${id}.jpg`,
+    arquivo: new Blob(['x'], { type: 'image/jpeg' }),
+  })
+
+  function preparar() {
+    useAuthStore().usuario = { uid: 'joao', nome: 'João' } as Usuario
+    falso.updateImovel.mockImplementation((id) => Promise.resolve(imovel(id)))
+    falso.createImovel.mockImplementation(() => {
+      falso.ordem.push('documento')
+      return Promise.resolve(imovel('novo', { fotos: [] }))
+    })
+    falso.uploadFoto.mockImplementation(() => {
+      falso.ordem.push('upload')
+      return Promise.resolve(`https://storage/${Math.random()}`)
+    })
+    falso.atualizarFotos.mockImplementation((id, alteracao) => {
+      falso.ordem.push('fotos[]')
+      return Promise.resolve(
+        imovel(id, { fotos: (alteracao as { adicionadas: string[] }).adicionadas }),
+      )
+    })
+    falso.deleteFoto.mockImplementation(() => {
+      falso.ordem.push('apagar')
+      return Promise.resolve()
+    })
+    return useImoveisStore()
+  }
+
+  it('grava o documento, depois envia as fotos, depois grava fotos[]', async () => {
+    const store = preparar()
+    const r = await store.salvar(dados, undefined, { novas: [foto('a'), foto('b')] })
+
+    expect(falso.ordem).toEqual(['documento', 'upload', 'upload', 'fotos[]'])
+    expect(falso.uploadFoto).toHaveBeenCalledWith('novo', expect.any(Blob), expect.any(Function))
+    expect(Object.keys(r.enviadas).sort()).toEqual(['a', 'b'])
+    expect(r.falhas).toEqual([])
+    expect(r.imovel.fotos).toHaveLength(2)
+  })
+
+  it('foto que falha no upload não derruba o cadastro nem as outras fotos', async () => {
+    const store = preparar()
+    falso.uploadFoto.mockImplementation((_id, arquivo) =>
+      arquivo.type === 'image/jpeg'
+        ? Promise.resolve('https://storage/ok')
+        : Promise.reject(new Error('unauthorized')),
+    )
+    const ruim = { id: 'ruim', nome: 'ruim.txt', arquivo: new Blob(['x'], { type: 'text/plain' }) }
+    const estados: string[] = []
+
+    const r = await store.salvar(dados, undefined, {
+      novas: [foto('boa'), ruim],
+      aoAtualizar: (id, p) => estados.push(`${id}:${p.estado}`),
+    })
+
+    expect(r.falhas.map((f) => f.nome)).toEqual(['ruim.txt'])
+    expect(Object.keys(r.enviadas)).toEqual(['boa'])
+    expect(falso.atualizarFotos).toHaveBeenCalledWith(
+      'novo',
+      { adicionadas: ['https://storage/ok'], removidas: [] },
+      expect.anything(),
+    )
+    expect(estados).toContain('ruim:falhou')
+    expect(estados).toContain('boa:enviada')
+    expect(store.porId('novo')).toBeUndefined() // escopo não carregado: lista não inventada
+  })
+
+  it('se o documento não é gravado, nenhum upload acontece e o erro sobe', async () => {
+    const store = preparar()
+    falso.createImovel.mockRejectedValue(new Error('permission-denied'))
+    await expect(store.salvar(dados, undefined, { novas: [foto('a')] })).rejects.toThrow(
+      'permission-denied',
+    )
+    expect(falso.uploadFoto).not.toHaveBeenCalled()
+  })
+
+  it('se fotos[] não grava, apaga do Storage o que subiu e marca as fotos como falhas', async () => {
+    const store = preparar()
+    falso.atualizarFotos.mockRejectedValue(new Error('offline'))
+    const r = await store.salvar(dados, undefined, { novas: [foto('a'), foto('b')] })
+
+    expect(falso.deleteFoto).toHaveBeenCalledTimes(2)
+    expect(r.falhas.map((f) => f.id).sort()).toEqual(['a', 'b'])
+    expect(r.enviadas).toEqual({})
+    expect(r.erroNasFotos).toBeInstanceOf(Error)
+  })
+
+  it('remoção: tira a URL de fotos[] primeiro e só depois apaga o arquivo', async () => {
+    const store = preparar()
+    await store.salvar(dados, 'x', { removidas: ['https://storage/velha'] })
+    // updateImovel é simulado separadamente; o que importa é a ordem entre fotos[] e Storage
+    expect(falso.ordem).toEqual(['fotos[]', 'apagar'])
+    expect(falso.deleteFoto).toHaveBeenCalledWith('https://storage/velha')
+  })
+
+  it('arquivo que não pôde ser apagado é contado, não derruba o salvamento', async () => {
+    const store = preparar()
+    falso.deleteFoto.mockRejectedValue(new Error('rede'))
+    const r = await store.salvar(dados, 'x', { removidas: ['a', 'b'] })
+    expect(r.naoApagadas).toBe(2)
+  })
+
+  it('sem fotos, não toca no Storage nem em fotos[]', async () => {
+    const store = preparar()
+    await store.salvar(dados)
+    expect(falso.uploadFoto).not.toHaveBeenCalled()
+    expect(falso.atualizarFotos).not.toHaveBeenCalled()
   })
 })

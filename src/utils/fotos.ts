@@ -1,4 +1,7 @@
 import imageCompression from 'browser-image-compression'
+// O worker de compressão carrega a própria biblioteca; apontamos para a cópia empacotada
+// (por padrão ele a baixaria de um CDN em tempo de execução).
+import urlDaBiblioteca from 'browser-image-compression/dist/browser-image-compression.js?url'
 
 /** Tipos aceitos no seletor de fotos. */
 export const TIPOS_DE_FOTO = ['image/jpeg', 'image/png', 'image/webp'] as const
@@ -31,9 +34,13 @@ export async function comprimirFoto(arquivo: File): Promise<File> {
     maxSizeMB: 1,
     maxWidthOrHeight: 1920,
     useWebWorker: true,
+    libURL: urlDaBiblioteca,
     initialQuality: 0.8,
   })
 }
+
+/** Acima disto nem tentamos comprimir: seria lento e a foto não é de celular ou câmera comum. */
+export const TAMANHO_MAXIMO_ORIGINAL = 25 * 1024 * 1024
 
 export const ehFotoAceita = (arquivo: File) =>
   (TIPOS_DE_FOTO as readonly string[]).includes(arquivo.type)
