@@ -27,25 +27,24 @@ const auth = useAuthStore()
 const imoveis = useImoveisStore()
 const usuarios = useUsuariosStore()
 
-const { errors, values, setFieldValue, validateField, handleSubmit, isSubmitting, resetForm } =
+const { errors, values, defineField, validateField, handleSubmit, isSubmitting, resetForm } =
   useForm<ValoresFormImovel>({
     validationSchema: esquemaImovel,
     initialValues: valoresIniciais(auth.usuario?.uid ?? ''),
   })
 
 /**
- * Cada campo vira um modelo para `v-model`. Valida ao sair do campo; depois do primeiro erro,
- * revalida a cada digitação (como no login).
+ * Cada campo é registrado com `defineField` e vira um modelo para `v-model`. O registro é
+ * necessário: sem ele o vee-validate trata o campo como "já validado" e mostra todos os erros
+ * assim que a tela abre. Valida ao sair do campo; depois do primeiro erro, revalida a cada
+ * digitação (como no login).
  */
 const campos = Object.keys(valoresIniciais()) as (keyof ValoresFormImovel)[]
 const m = reactive(
   Object.fromEntries(
     campos.map((nome) => [
       nome,
-      computed({
-        get: () => values[nome] ?? '',
-        set: (valor: string) => void setFieldValue(nome, valor, Boolean(errors.value[nome])),
-      }),
+      defineField(nome, (estado) => ({ validateOnModelUpdate: estado.errors.length > 0 }))[0],
     ]),
   ) as unknown as Record<keyof ValoresFormImovel, string>,
 )

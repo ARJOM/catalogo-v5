@@ -104,6 +104,14 @@ describe('ImovelFormView', () => {
     ])
   })
 
+  it('abre sem nenhuma mensagem de erro (validação só ao sair do campo ou ao enviar)', async () => {
+    const w = montar()
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 100))
+    expect(w.findAll('.ferr')).toHaveLength(0)
+    w.unmount()
+  })
+
   it('tem as 27 UFs', () => {
     const w = montar()
     expect(campo(w, 'Estado').findAll('option')).toHaveLength(27)
