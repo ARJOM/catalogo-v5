@@ -1,4 +1,13 @@
-import { doc, getDoc, onSnapshot, type DocumentSnapshot } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  type DocumentSnapshot,
+} from 'firebase/firestore'
 import { db } from '@/firebase'
 import type { Usuario } from '@/types'
 
@@ -8,6 +17,12 @@ function paraUsuario(snap: DocumentSnapshot): Usuario | null {
 
 export async function getUser(uid: string): Promise<Usuario | null> {
   return paraUsuario(await getDoc(doc(db, 'users', uid)))
+}
+
+/** Todos os usuários (ativos e inativos), em ordem alfabética de nome. */
+export async function listUsers(): Promise<Usuario[]> {
+  const resultado = await getDocs(query(collection(db, 'users'), orderBy('nome')))
+  return resultado.docs.map((snap) => paraUsuario(snap)!)
 }
 
 /**
