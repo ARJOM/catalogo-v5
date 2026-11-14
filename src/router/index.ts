@@ -41,8 +41,8 @@ export function criarRouter(history: RouterHistory = createWebHistory(import.met
       {
         path: '/leads',
         name: 'leads',
-        component: emBreve,
-        meta: { titulo: 'Leads', epic: 'E6', requiresAuth: true },
+        component: () => import('@/views/LeadsView.vue'),
+        meta: { titulo: 'Leads', requiresAuth: true },
       },
       {
         path: '/admin',
