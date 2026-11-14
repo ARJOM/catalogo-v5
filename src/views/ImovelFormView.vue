@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import BaseButton from '@/components/BaseButton.vue'
 import BaseInput from '@/components/BaseInput.vue'
@@ -11,6 +11,7 @@ import { useImoveisStore } from '@/stores/imoveis'
 import { useUsuariosStore } from '@/stores/usuarios'
 import { UFS } from '@/utils/estados'
 import type { ItemFoto } from '@/utils/fotos'
+import { deImovel } from '@/utils/validacaoImovel'
 import { mascararNumero, mascararTelefone, soDigitos } from '@/utils/mascaras'
 import { FINALIDADES, TIPOS_IMOVEL } from '@/utils/tiposImovel'
 import {
@@ -20,12 +21,13 @@ import {
   type ValoresFormImovel,
 } from '@/utils/validacaoImovel'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const imoveis = useImoveisStore()
 const usuarios = useUsuariosStore()
 
-const { errors, values, setFieldValue, validateField, handleSubmit, isSubmitting } =
+const { errors, values, setFieldValue, validateField, handleSubmit, isSubmitting, resetForm } =
   useForm<ValoresFormImovel>({
     validationSchema: esquemaImovel,
     initialValues: valoresIniciais(auth.usuario?.uid ?? ''),
@@ -49,7 +51,44 @@ const m = reactive(
 )
 const sair = (nome: keyof ValoresFormImovel) => void validateField(nome)
 
-onMounted(() => void usuarios.carregar())
+// Edição: `/imoveis/:id/editar` carrega o imóvel do servidor e preenche formulário e fotos.
+const idDaRota = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
+const carregando = ref(idDaRota.value !== null)
+const erroCarga = ref('')
+const naoEncontrado = ref(false)
+
+async function carregarImovel(id: string) {
+  carregando.value = true
+  erroCarga.value = ''
+  naoEncontrado.value = false
+  try {
+    const imovel = await imoveis.obter(id)
+    if (!imovel) {
+      naoEncontrado.value = true
+      return
+    }
+    resetForm({ values: deImovel(imovel) })
+    fotos.value = imovel.fotos.map((url, indice) => ({
+      id: `salva-${indice}-${url}`,
+      url,
+      previa: url,
+      nome: `Foto ${indice + 1}`,
+      estado: 'enviada',
+      progresso: 100,
+    }))
+    urlsSalvas.value = [...imovel.fotos]
+    idAtual.value = imovel.id
+  } catch {
+    erroCarga.value = 'Não foi possível carregar o imóvel. Tente novamente.'
+  } finally {
+    carregando.value = false
+  }
+}
+
+onMounted(() => {
+  void usuarios.carregar()
+  if (idDaRota.value) void carregarImovel(idDaRota.value)
+})
 
 const opcoesTipo = TIPOS_IMOVEL.map((t) => ({ valor: t, rotulo: t }))
 const opcoesFinalidade = FINALIDADES.map((f) => ({ valor: f, rotulo: f }))
@@ -142,6 +181,8 @@ const enviar = handleSubmit(
 
 function cancelar() {
   if (window.history.state?.back) router.back()
+  else if (idAtual.value)
+    void router.push({ name: 'imovel-detalhe', params: { id: idAtual.value } })
   else void router.push({ name: 'catalogo' })
 }
 
@@ -151,7 +192,27 @@ const mascaraArea = (texto: string) => mascararNumero(texto, 2)
 </script>
 
 <template>
-  <form novalidate @submit.prevent="enviar">
+  <div v-if="carregando" class="vazio" aria-busy="true" aria-label="Carregando imóvel">
+    <i class="ti ti-loader-2 girando" aria-hidden="true"></i>
+    <p class="vazio-titulo">Carregando imóvel…</p>
+  </div>
+
+  <div v-else-if="erroCarga" class="vazio" role="alert">
+    <i class="ti ti-cloud-off" aria-hidden="true"></i>
+    <p class="vazio-titulo">{{ erroCarga }}</p>
+    <BaseButton icone="refresh" @click="carregarImovel(idDaRota!)">Tentar de novo</BaseButton>
+  </div>
+
+  <div v-else-if="naoEncontrado" class="vazio">
+    <i class="ti ti-home-off" aria-hidden="true"></i>
+    <p class="vazio-titulo">Imóvel não encontrado</p>
+    <p class="vazio-texto">Ele pode ter sido excluído ou o endereço está incorreto.</p>
+    <BaseButton icone="arrow-left" @click="router.push({ name: 'catalogo' })">
+      Voltar ao catálogo
+    </BaseButton>
+  </div>
+
+  <form v-else novalidate @submit.prevent="enviar">
     <div class="ph">
       <div>
         <h1 class="ph-title">{{ editando ? 'Editar imóvel' : 'Novo imóvel' }}</h1>

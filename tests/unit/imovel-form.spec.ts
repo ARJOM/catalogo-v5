@@ -10,19 +10,22 @@ const falso = vi.hoisted(() => ({
   atualizarFotos: vi.fn<(id: string, alteracao: unknown, autor: unknown) => Promise<unknown>>(),
   uploadFoto: vi.fn<(id: string, arquivo: Blob) => Promise<string>>(),
   comprimir: vi.fn<(arquivo: File) => Promise<File>>(),
+  params: {} as Record<string, string>,
+  getImovel: vi.fn<(id: string) => Promise<unknown>>(),
+  deleteFoto: vi.fn<(url: string) => Promise<void>>(),
   push: vi.fn<(destino: unknown) => Promise<void>>(),
   replace: vi.fn<(destino: unknown) => Promise<void>>(),
 }))
 vi.mock('@/services/imoveis', () => ({
   listImoveis: vi.fn<() => void>(),
-  getImovel: vi.fn<() => void>(),
+  getImovel: falso.getImovel,
   createImovel: falso.createImovel,
   updateImovel: falso.updateImovel,
   atualizarFotos: falso.atualizarFotos,
 }))
 vi.mock('@/services/storage', () => ({
   uploadFoto: falso.uploadFoto,
-  deleteFoto: vi.fn<() => void>(),
+  deleteFoto: falso.deleteFoto,
 }))
 vi.mock('browser-image-compression', () => ({ default: falso.comprimir }))
 vi.mock('@/services/auth', () => ({
@@ -42,7 +45,7 @@ vi.mock('@/services/users', () => ({
 vi.mock('vue-router', () => ({
   RouterLink: { template: '<a><slot /></a>' },
   useRouter: () => ({ push: falso.push, replace: falso.replace, back: vi.fn<() => void>() }),
-  useRoute: () => ({ params: {} }),
+  useRoute: () => ({ params: falso.params }),
 }))
 
 import ImovelFormView from '@/views/ImovelFormView.vue'
@@ -71,6 +74,9 @@ async function enviar(w: ReturnType<typeof montar>) {
 }
 
 beforeEach(() => {
+  falso.params = {}
+  falso.getImovel.mockReset()
+  falso.deleteFoto.mockReset().mockResolvedValue()
   falso.createImovel.mockReset()
   falso.updateImovel.mockReset()
   falso.atualizarFotos.mockReset()
@@ -255,5 +261,113 @@ describe('ImovelFormView', () => {
     expect(falso.uploadFoto).toHaveBeenCalledTimes(1)
     expect(falso.replace).toHaveBeenCalledWith({ name: 'imovel-detalhe', params: { id: 'novo' } })
     w.unmount()
+  })
+
+  describe('edição', () => {
+    const existente = {
+      id: 'x1',
+      tipo: 'Apartamento',
+      finalidade: 'Aluguel',
+      valor: 1800.5,
+      areaM2: 85,
+      quartos: 2,
+      caracteristicas: 'Garagem',
+      rua: 'Av. Brasil, 88',
+      bairro: 'Centro',
+      cidade: 'Sousa',
+      estado: 'PB',
+      captadorId: 'maria',
+      vendedorNome: 'Beltrano',
+      vendedorTelefone: '83988880000',
+      status: 'ativo',
+      fotos: ['https://s/f1', 'https://s/f2'],
+      criadoEm: { toMillis: () => 1 },
+    }
+
+    it('carrega o imóvel e preenche campos e fotos', async () => {
+      falso.params = { id: 'x1' }
+      falso.getImovel.mockResolvedValue(existente)
+      const w = montar()
+      await flushPromises()
+
+      expect(w.find('h1').text()).toBe('Editar imóvel')
+      const valor = (rotulo: string) => (campo(w, rotulo).element as HTMLInputElement).value
+      expect(valor('Valor')).toBe('1.800,5')
+      expect(valor('Área')).toBe('85')
+      expect(valor('Quartos')).toBe('2')
+      expect(valor('Rua')).toBe('Av. Brasil, 88')
+      expect(valor('Telefone')).toBe('(83) 98888-0000')
+      expect(valor('Tipo')).toBe('Apartamento')
+      expect(valor('Captador')).toBe('maria')
+      expect(w.findAll('.fthumb img').map((i) => i.attributes('src'))).toEqual([
+        'https://s/f1',
+        'https://s/f2',
+      ])
+      w.unmount()
+    })
+
+    it('salva com update (não cria), remove a foto retirada de fotos[] e do Storage', async () => {
+      falso.params = { id: 'x1' }
+      falso.getImovel.mockResolvedValue(existente)
+      falso.updateImovel.mockResolvedValue(existente)
+      falso.atualizarFotos.mockResolvedValue({ ...existente, fotos: ['https://s/f2'] })
+      const w = montar()
+      await flushPromises()
+
+      await w.findAll('.frm')[0]!.trigger('click') // remove a primeira foto
+      await campo(w, 'Valor').setValue('1700')
+      await enviar(w)
+
+      expect(falso.createImovel).not.toHaveBeenCalled()
+      expect(falso.updateImovel).toHaveBeenCalledWith(
+        'x1',
+        expect.objectContaining({ valor: 1700, quartos: 2, captadorId: 'maria' }),
+        { uid: 'joao', nome: 'João Melo' },
+      )
+      expect(falso.atualizarFotos).toHaveBeenCalledWith(
+        'x1',
+        { adicionadas: [], removidas: ['https://s/f1'] },
+        expect.anything(),
+      )
+      expect(falso.deleteFoto).toHaveBeenCalledWith('https://s/f1')
+      expect(falso.replace).toHaveBeenCalledWith({ name: 'imovel-detalhe', params: { id: 'x1' } })
+      w.unmount()
+    })
+
+    it('sem mexer nas fotos, não toca em fotos[] nem no Storage', async () => {
+      falso.params = { id: 'x1' }
+      falso.getImovel.mockResolvedValue(existente)
+      falso.updateImovel.mockResolvedValue(existente)
+      const w = montar()
+      await flushPromises()
+      await enviar(w)
+      expect(falso.updateImovel).toHaveBeenCalledTimes(1)
+      expect(falso.atualizarFotos).not.toHaveBeenCalled()
+      expect(falso.deleteFoto).not.toHaveBeenCalled()
+      w.unmount()
+    })
+
+    it('imóvel inexistente mostra aviso e não o formulário', async () => {
+      falso.params = { id: 'fantasma' }
+      falso.getImovel.mockResolvedValue(null)
+      const w = montar()
+      await flushPromises()
+      expect(w.text()).toContain('Imóvel não encontrado')
+      expect(w.find('form').exists()).toBe(false)
+      w.unmount()
+    })
+
+    it('erro de rede ao carregar oferece tentar de novo', async () => {
+      falso.params = { id: 'x1' }
+      falso.getImovel.mockRejectedValueOnce(new Error('offline'))
+      const w = montar()
+      await flushPromises()
+      expect(w.find('[role="alert"]').text()).toContain('Não foi possível carregar o imóvel')
+      falso.getImovel.mockResolvedValue(existente)
+      await w.find('button').trigger('click')
+      await flushPromises()
+      expect(w.find('h1').text()).toBe('Editar imóvel')
+      w.unmount()
+    })
   })
 })
