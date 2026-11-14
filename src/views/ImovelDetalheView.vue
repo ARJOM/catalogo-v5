@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BaseBadge from '@/components/BaseBadge.vue'
 import BaseButton from '@/components/BaseButton.vue'
 import FotoCarrossel from '@/components/FotoCarrossel.vue'
+import LeadsDoImovel from '@/components/LeadsDoImovel.vue'
 import { useImoveisStore } from '@/stores/imoveis'
 import { useUsuariosStore } from '@/stores/usuarios'
 import {
@@ -171,6 +172,7 @@ function voltar() {
           </template>
         </p>
       </div>
+      <LeadsDoImovel :imovel="imovel" />
     </div>
   </div>
 </template>
