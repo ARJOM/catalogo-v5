@@ -1,0 +1,8 @@
+especificacoes_tecnicas_catalogo_v5.docx
+
+node_modules/
+dist/
+.env
+.env.local
+*-debug.log
+.firebase/
