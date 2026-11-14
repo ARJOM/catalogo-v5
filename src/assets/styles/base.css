@@ -335,3 +335,28 @@ select.finp { cursor: pointer; }
 .modal-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.2px; }
 .modal-body { padding: 16px; overflow: auto; }
 .modal-ftr { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+
+/* Catálogo: cards e linhas são links (RouterLink), com foco visível e sem sublinhado. */
+a.imovel-card, a.imovel-row { display: block; color: inherit; text-decoration: none; }
+a.imovel-row { display: flex; }
+a.imovel-card:focus-visible, a.imovel-row:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.imovel-foto .foto-img, .ir-thumb .foto-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ir-thumb { overflow: hidden; }
+.ir-valor .sfx { font-size: 11px; font-weight: 400; color: var(--text-3); }
+.fg input:focus-visible, .fg select:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.filter-clear { flex: 0 0 auto; height: 34px; }
+
+/* Estado vazio e de erro das listas. */
+.vazio { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 40px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); }
+.vazio > i { font-size: 36px; color: var(--text-3); }
+.vazio-titulo { font-size: 14px; font-weight: 600; color: var(--text); }
+.vazio-texto { font-size: 13px; color: var(--text-2); margin-bottom: 6px; }
+
+/* Carregamento: esqueleto dos cards. */
+.skeleton { background: var(--surface-2); animation: pulsar 1.2s ease-in-out infinite; }
+.sk-linha { height: 12px; border-radius: 6px; margin-bottom: 8px; }
+.sk-valor { height: 18px; width: 55%; }
+.sk-curta { width: 40%; margin-bottom: 0; }
+.skeleton-card { cursor: default; }
+@keyframes pulsar { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skeleton, .girando { animation: none; } }

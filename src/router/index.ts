@@ -17,8 +17,8 @@ export function criarRouter(history: RouterHistory = createWebHistory(import.met
       {
         path: '/',
         name: 'catalogo',
-        component: emBreve,
-        meta: { titulo: 'Catálogo de imóveis', epic: 'E3', requiresAuth: true },
+        component: () => import('@/views/CatalogoView.vue'),
+        meta: { titulo: 'Catálogo de imóveis', requiresAuth: true },
       },
       {
         path: '/imoveis/novo',
