@@ -318,6 +318,11 @@ a.logo, a.si, a.bn-item { text-decoration: none; }
 .badge.sm { font-size: 10px; padding: 2px 6px; }
 
 .finp.invalido { border-color: var(--red); }
+.li.invalido { border-color: var(--red); }
+.li:focus-visible, .lchk input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.lferr { display: block; font-size: 11px; color: var(--red); margin-top: 4px; }
+.lalert { display: flex; align-items: flex-start; gap: 8px; background: var(--red-bg); color: var(--red); border-radius: var(--r); padding: 10px 12px; font-size: 13px; margin-bottom: 14px; }
+.lalert i { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
 .ferr { font-size: 11px; color: var(--red); }
 select.finp { cursor: pointer; }
 
