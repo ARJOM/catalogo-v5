@@ -2,15 +2,14 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import BaseBadge from './BaseBadge.vue'
+import BaseButton from './BaseButton.vue'
+import { useAuthStore } from '@/stores/auth'
 import { iniciais } from '@/utils/formatadores'
 
-const props = defineProps<{
-  nome: string
-  perfil: 'admin' | 'corretor'
-}>()
-
+const auth = useAuthStore()
 const route = useRoute()
-const ehAdmin = computed(() => props.perfil === 'admin')
+const nome = computed(() => auth.usuario?.nome ?? '')
+const ehAdmin = computed(() => auth.ehAdmin)
 
 /** Seção ativa da navegação; as rotas de imóvel (detalhe, cadastro) pertencem a "Imóveis". */
 const secao = computed(() => {
@@ -38,6 +37,14 @@ const secao = computed(() => {
         <div v-else class="topbar-name">{{ nome }}</div>
         <div class="topbar-role">{{ ehAdmin ? 'Administrador' : 'Corretor' }}</div>
       </div>
+      <BaseButton
+        somente-icone
+        tamanho="sm"
+        icone="logout"
+        aria-label="Sair"
+        title="Sair"
+        @click="auth.logout()"
+      />
     </div>
   </header>
 

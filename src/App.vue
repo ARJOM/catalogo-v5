@@ -19,11 +19,7 @@ watch(
 </script>
 
 <template>
-  <AppLayout
-    v-if="auth.usuario && route.meta.requiresAuth"
-    :nome="auth.usuario.nome"
-    :perfil="auth.usuario.perfil"
-  >
+  <AppLayout v-if="auth.usuario && route.meta.requiresAuth">
     <RouterView />
   </AppLayout>
   <RouterView v-else />
