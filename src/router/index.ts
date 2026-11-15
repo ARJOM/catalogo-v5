@@ -58,8 +58,8 @@ export function criarRouter(history: RouterHistory = createWebHistory(import.met
       {
         path: '/admin/usuarios',
         name: 'admin-usuarios',
-        component: emBreve,
-        meta: { titulo: 'Usuários', epic: 'E7', requiresAuth: true, requiresAdmin: true },
+        component: () => import('@/views/UsuariosView.vue'),
+        meta: { titulo: 'Usuários', requiresAuth: true, requiresAdmin: true },
       },
       { path: '/:caminho(.*)*', redirect: '/' },
     ],
