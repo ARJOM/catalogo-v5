@@ -13,6 +13,7 @@ const ehAdmin = computed(() => auth.ehAdmin)
 
 /** Seção ativa da navegação; as rotas de imóvel (detalhe, cadastro) pertencem a "Imóveis". */
 const secao = computed(() => {
+  if (route.path.startsWith('/admin/usuarios')) return 'usuarios'
   if (route.path.startsWith('/admin')) return 'admin'
   if (route.path.startsWith('/leads')) return 'leads'
   return 'imoveis'
@@ -59,7 +60,10 @@ const secao = computed(() => {
       </RouterLink>
       <template v-if="ehAdmin">
         <div class="si-section">Administração</div>
-        <RouterLink to="/admin/usuarios" class="si danger">
+        <RouterLink to="/admin" class="si danger" :class="{ on: secao === 'admin' }">
+          <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Painel
+        </RouterLink>
+        <RouterLink to="/admin/usuarios" class="si danger" :class="{ on: secao === 'usuarios' }">
           <i class="ti ti-shield-check" aria-hidden="true"></i> Usuários
         </RouterLink>
       </template>
@@ -77,7 +81,12 @@ const secao = computed(() => {
     <RouterLink to="/leads" class="bn-item" :class="{ on: secao === 'leads' }">
       <i class="ti ti-users" aria-hidden="true"></i> Leads
     </RouterLink>
-    <RouterLink v-if="ehAdmin" to="/admin" class="bn-item admin">
+    <RouterLink
+      v-if="ehAdmin"
+      to="/admin"
+      class="bn-item admin"
+      :class="{ on: secao === 'admin' || secao === 'usuarios' }"
+    >
       <i class="ti ti-shield-check" aria-hidden="true"></i> Admin
     </RouterLink>
   </nav>

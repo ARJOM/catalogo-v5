@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { connectAuthEmulator, getAuth } from 'firebase/auth'
+import { connectAuthEmulator, getAuth, type Auth } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 import { connectStorageEmulator, getStorage } from 'firebase/storage'
 
@@ -23,10 +23,20 @@ export const storage = getStorage(app)
 // Sem isto um upload que não consegue avançar tenta por 10 minutos e o formulário fica travado.
 storage.maxUploadRetryTime = 60_000
 
+/**
+ * Aponta uma instância de Auth para o emulador quando em desenvolvimento. Também serve à
+ * instância secundária usada na criação de usuários (services/users.ts).
+ */
+export function configurarAuth(instancia: Auth) {
+  if (import.meta.env.DEV) {
+    connectAuthEmulator(instancia, 'http://127.0.0.1:9099', { disableWarnings: true })
+  }
+}
+
 // Em desenvolvimento (`npm run dev` e testes) tudo fala com o Emulator Suite,
 // nunca com o projeto real. Portas conforme firebase.json.
 if (import.meta.env.DEV) {
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  configurarAuth(auth)
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
   connectStorageEmulator(storage, '127.0.0.1', 9199)
 }

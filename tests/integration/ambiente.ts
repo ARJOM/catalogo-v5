@@ -28,11 +28,12 @@ function host(variavel: string): [string, number] {
  * do projeto de teste. Os serviços reais são usados como estão.
  */
 export function criarFirebaseDeTeste() {
-  const app = initializeApp({
+  const firebaseConfig = {
     apiKey: 'chave-de-teste',
     projectId: PROJECT_ID,
     storageBucket: `${PROJECT_ID}.appspot.com`,
-  })
+  }
+  const app = initializeApp(firebaseConfig)
   const auth = getAuth(app)
   const db = getFirestore(app)
   const storage = getStorage(app)
@@ -42,7 +43,10 @@ export function criarFirebaseDeTeste() {
   connectAuthEmulator(auth, `http://${authHost}:${authPorta}`, { disableWarnings: true })
   connectFirestoreEmulator(db, fsHost, fsPorta)
   connectStorageEmulator(storage, stHost, stPorta)
-  return { app, auth, db, storage }
+  /** Mesma ligação com o emulador, para instâncias extras de Auth (criação de usuários). */
+  const configurarAuth = (instancia: ReturnType<typeof getAuth>) =>
+    connectAuthEmulator(instancia, `http://${authHost}:${authPorta}`, { disableWarnings: true })
+  return { app, auth, db, storage, firebaseConfig, configurarAuth }
 }
 
 let ambiente: RulesTestEnvironment | null = null

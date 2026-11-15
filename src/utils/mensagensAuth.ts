@@ -24,3 +24,21 @@ export function mensagemDeErroAuth(codigo: string | undefined): string {
       return 'Não foi possível entrar. Tente novamente.'
   }
 }
+
+/** Traduz o erro do Firebase Authentication ao criar uma conta (cadastro de usuário pelo admin). */
+export function mensagemDeErroCriacao(codigo: string | undefined): string {
+  switch (codigo) {
+    case 'auth/email-already-in-use':
+      return 'Já existe um usuário com este e-mail.'
+    case 'auth/invalid-email':
+      return 'E-mail inválido.'
+    case 'auth/weak-password':
+      return 'Senha muito fraca. Use ao menos 6 caracteres.'
+    case 'auth/network-request-failed':
+      return 'Sem conexão. Verifique sua internet e tente novamente.'
+    case 'permission-denied':
+      return 'Você não tem permissão para criar usuários.'
+    default:
+      return 'Não foi possível criar o usuário. Tente novamente.'
+  }
+}
