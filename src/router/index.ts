@@ -1,9 +1,6 @@
 import { createRouter, createWebHistory, type RouterHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// Enquanto as views reais não existem (epics E3 a E7), as rotas apontam para o placeholder.
-const emBreve = () => import('@/views/EmBreveView.vue')
-
 export function criarRouter(history: RouterHistory = createWebHistory(import.meta.env.BASE_URL)) {
   const router = createRouter({
     history,
@@ -47,13 +44,8 @@ export function criarRouter(history: RouterHistory = createWebHistory(import.met
       {
         path: '/admin',
         name: 'admin',
-        component: emBreve,
-        meta: {
-          titulo: 'Painel administrativo',
-          epic: 'E7',
-          requiresAuth: true,
-          requiresAdmin: true,
-        },
+        component: () => import('@/views/AdminView.vue'),
+        meta: { titulo: 'Painel administrativo', requiresAuth: true, requiresAdmin: true },
       },
       {
         path: '/admin/usuarios',
