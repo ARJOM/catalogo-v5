@@ -66,6 +66,31 @@ describe('diffImovel', () => {
     ])
   })
 
+  it('dois objetos sem nenhum campo auditado não geram mudança', () => {
+    expect(diffImovel({}, {})).toEqual([])
+  })
+
+  it('campo opcional ausente dos dois lados não conta; valor 0 é diferente de vazio', () => {
+    const { quartos: _q, ...semQuartos } = base
+    expect(diffImovel(semQuartos, semQuartos)).toEqual([])
+    expect(diffImovel({ ...base, quartos: 0 }, { ...base, quartos: 0 })).toEqual([])
+    expect(diffImovel({ ...base, quartos: 0 }, { ...base, quartos: null })).toEqual([
+      { campo: 'quartos', valorAnterior: 0, valorNovo: null },
+    ])
+  })
+
+  it('valor numérico igual escrito de outro tipo é mudança; mesmo número não é', () => {
+    expect(diffImovel(base, { ...base, valor: base.valor })).toEqual([])
+    expect(
+      diffImovel(base, { ...base, valor: String(base.valor) as unknown as number }),
+    ).toHaveLength(1)
+  })
+
+  it('várias alterações saem na ordem do formulário, não na ordem em que foram passadas', () => {
+    const novo = { ...base, bairro: 'Outro', valor: 1, tipo: 'Terreno' as const }
+    expect(diffImovel(base, novo).map((m) => m.campo)).toEqual(['tipo', 'valor', 'bairro'])
+  })
+
   it('texto diferente só no espaço ou na caixa também é mudança (comparação exata)', () => {
     expect(diffImovel(base, { ...base, rua: 'rua a, 10' })).toHaveLength(1)
   })
