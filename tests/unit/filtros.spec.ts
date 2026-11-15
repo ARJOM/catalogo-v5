@@ -128,6 +128,56 @@ describe('filtrarImoveis', () => {
   it('lista vazia continua vazia', () => {
     expect(filtrarImoveis([], { ...filtrosVazios(), busca: 'x' })).toEqual([])
   })
+
+  it('termo digitado com acento encontra dado gravado sem acento', () => {
+    expect(ids(filtrarImoveis(lista, { ...filtrosVazios(), busca: 'Flôres' }))).toEqual(['casa'])
+    expect(ids(filtrarImoveis(lista, { ...filtrosVazios(), busca: 'brasíl' }))).toEqual(['apto'])
+    expect(ids(filtrarImoveis(lista, { ...filtrosVazios(), busca: 'SÃO JOÃO' }))).toEqual(['sjp'])
+  })
+
+  it('busca só com espaços não filtra nada e espaços extras entre palavras são ignorados', () => {
+    expect(filtrarImoveis(lista, { ...filtrosVazios(), busca: '   ' })).toHaveLength(4)
+    expect(
+      ids(filtrarImoveis(lista, { ...filtrosVazios(), busca: '  cajazeiras   flores ' })),
+    ).toEqual(['casa'])
+  })
+
+  it('busca sem resultado devolve lista vazia', () => {
+    expect(filtrarImoveis(lista, { ...filtrosVazios(), busca: 'inexistente' })).toEqual([])
+  })
+
+  it('faixa de valor: limites iguais pegam o valor exato; faixa invertida não devolve nada', () => {
+    expect(
+      ids(filtrarImoveis(lista, { ...filtrosVazios(), valorMin: '1.800', valorMax: '1800' })),
+    ).toEqual(['apto'])
+    expect(
+      filtrarImoveis(lista, { ...filtrosVazios(), valorMin: '500000', valorMax: '1000' }),
+    ).toEqual([])
+  })
+
+  it('faixa de valor aceita centavos, prefixo R$ e o limite mínimo 0', () => {
+    expect(
+      ids(
+        filtrarImoveis(lista, {
+          ...filtrosVazios(),
+          valorMin: 'R$ 1.800,00',
+          valorMax: 'R$ 1.800,50',
+        }),
+      ),
+    ).toEqual(['apto'])
+    expect(filtrarImoveis(lista, { ...filtrosVazios(), valorMin: '0' })).toHaveLength(4)
+  })
+
+  it('faixa de valor combinada com tipo e busca', () => {
+    const filtros = {
+      ...filtrosVazios(),
+      busca: 'cajazeiras',
+      valorMin: '90000',
+      valorMax: '300000',
+    }
+    expect(ids(filtrarImoveis(lista, filtros))).toEqual(['terreno'])
+    expect(filtrarImoveis(lista, { ...filtros, tipo: 'Casa' })).toEqual([])
+  })
 })
 
 describe('temFiltroAtivo', () => {
